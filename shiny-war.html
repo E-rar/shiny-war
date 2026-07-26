@@ -151,6 +151,7 @@
     <button class="btn" onclick="document.getElementById('dbfile').click()">🖼️ pokemon_data.json (Bilder)</button>
     <input type="file" id="dbfile" accept=".json" style="display:none">
     <button class="btn" onclick="loadFromUrl()">🌐 Von URL laden</button>
+    <button class="btn" onclick="exportHunts()">⬇ hunts.json</button>
     <button class="btn" onclick="useDemo()">↺ Beispieldaten</button>
   </div>
   <div id="modeline" style="text-align:center;margin:2px 0 6px"></div>
@@ -808,33 +809,54 @@ function uname(id){
 /* ============================================================
    BERECHNUNGEN
    ============================================================ */
+/* Sonderfall-Flags je Fang (Admin-editierbar). Overlay im localStorage, damit sie
+   Repo-Reloads überleben; werden zusätzlich auf die caught-Einträge geschrieben (für Export). */
+let CATCH_FLAGS=loadCFlags();
+function loadCFlags(){try{return JSON.parse(localStorage.getItem("sw_cflags")||"{}")}catch(e){return{}}}
+function saveCFlags(){try{localStorage.setItem("sw_cflags",JSON.stringify(CATCH_FLAGS))}catch(e){}}
+function catchKey(c){return norm(c.pokemon)+"|"+String(c.user_id)+"|"+(c.date||"");}
+function flagsFor(c){
+  const src=CATCH_FLAGS[catchKey(c)]||c;
+  return {alpha:!!src.alpha,legendary:!!src.legendary,secret:!!src.secret,safari:!!src.safari,egg:!!src.egg};
+}
+const CTYPES=[["legendary","★ Legendär/Mythos",200],["alpha","α Alpha",75],["egg","🥚 Egg",35],["secret","🔒 Secret",20],["safari","🌴 Safari",10]];
+
 function computeScores(){
   // Chronologisch (nach Datum, dann Eingabereihenfolge), um "zuerst" korrekt zu bestimmen
   const cs=(DATA.caught||[]).map((c,i)=>({c,i}))
     .sort((a,b)=>{const da=a.c.date||"",db=b.c.date||"";return da<db?-1:da>db?1:a.i-b.i;});
   const per={}, teamLines=new Set(), playerLines={}, unknown=new Set();
   let teamBonusTotal=0;
-  for(const {c} of cs){
+  for(const {c,i} of cs){
     const id=String(c.user_id);
     const line=resolve(c.pokemon);
+    const f=flagsFor(c);
+    const scored = line || f.legendary || f.alpha || f.egg || f.secret || f.safari;
     if(!per[id]) per[id]={pts:0,bonusPts:0,catches:[]};
-    if(!line){ // nicht in Tierlist -> zählt nicht (0 Punkte, kein Bonus)
+    if(!scored){ // nicht in Tierlist & kein Sonderfall -> 0 Punkte
       unknown.add(c.pokemon);
-      per[id].catches.push({name:displayName(c.pokemon),tier:null,pts:0,bonus:0,tag:"untiered",date:c.date});
+      per[id].catches.push({name:displayName(c.pokemon),tier:null,pts:0,bonus:0,tag:"untiered",date:c.date,idx:i,f});
       continue;
     }
-    const key=norm(line.e);                       // Identität der Entwicklungslinie
+    const key = line ? "L:"+norm(line.e) : "S:"+norm(c.pokemon);
+    const tierVal = line?line.p:0;
     if(!playerLines[id]) playerLines[id]=new Set();
-    const isDup=playerLines[id].has(key);         // Spieler hat diese Linie schon
-    let pts,tag;
-    if(isDup){ if(c.alpha){pts=35;tag="alpha";} else {pts=1;tag="dup";} }
-    else { pts=line.p; tag="first"; }
-    const bonus = teamLines.has(key)?0:8;         // Team-Erstfang -> +8
+    const isDup=playerLines[id].has(key);
+    let base,tag;
+    if(f.legendary){ base=200; tag="legendary"; }
+    else if(f.alpha){ base=75; tag="alpha"; }
+    else if(f.egg){ base=Math.max(35,tierVal); tag="egg"; }
+    else if(isDup){ base=1; tag="dup"; }
+    else { base=tierVal; tag=line?"first":"flag"; }
+    const uniqueB = teamLines.has(key)?0:8;       // Team-Erstfang der Linie
+    let bonus=uniqueB;
+    if(f.secret) bonus+=20;
+    if(f.safari) bonus+=10;
     teamLines.add(key); playerLines[id].add(key);
-    per[id].pts += pts+bonus;
+    per[id].pts += base+bonus;
     per[id].bonusPts += bonus;
-    teamBonusTotal += bonus;
-    per[id].catches.push({name:memName(c.pokemon),tier:line.t,pts,bonus,tag,date:c.date,e:line.e});
+    teamBonusTotal += uniqueB;
+    per[id].catches.push({name:line?memName(c.pokemon):displayName(c.pokemon),tier:line?line.t:null,pts:base,bonus,tag,date:c.date,e:line?line.e:null,idx:i,f});
   }
   const rows=Object.entries(per).map(([id,v])=>({id,...v}))
     .sort((a,b)=>b.pts-a.pts || b.catches.length-a.catches.length);
@@ -862,6 +884,7 @@ function activeList(){
    ============================================================ */
 const view=document.getElementById("view");
 let TAB="loc";
+let CEDIT=null; // Index des Fangs, der gerade bearbeitet wird (Admin)
 function showTab(t){TAB=t;document.querySelectorAll(".tab").forEach(el=>el.classList.toggle("active",el.dataset.tab===t));renderSeasonBar();render();}
 
 function renderSeasonBar(){
@@ -892,19 +915,60 @@ function catchChip(c){
   const eff=c.pts+(c.bonus||0);
   const badge = c.tier!=null?tierBadge(c.tier):'<span class="ktag">—</span>';
   let t="";
-  if(c.tag==="dup") t=` <span class="ktag">Dup</span>`;
-  else if(c.tag==="alpha") t=` <span style="color:var(--accent)">α Alpha</span>`;
-  else if(c.tag==="untiered") t=` <span class="ktag">0</span>`;
-  if(c.bonus) t+=` <span style="color:var(--good)">🆕+8</span>`;
-  return `<span class="chip"><span class="spwrap">${icon(c.name,c.tier!=null?{t:c.tier,n:[c.name],e:c.e}:null,'sm')} ${badge} ${c.name} <b>+${eff}</b>${t}</span></span>`;
+  if(c.tag==="legendary") t+=` <span style="color:#ffd23f">★</span>`;
+  else if(c.tag==="alpha") t+=` <span style="color:var(--accent)">α</span>`;
+  else if(c.tag==="egg") t+=` <span>🥚</span>`;
+  else if(c.tag==="dup") t+=` <span class="ktag">Dup</span>`;
+  else if(c.tag==="untiered") t+=` <span class="ktag">0</span>`;
+  if(c.f&&c.f.secret) t+=` <span style="color:#c678dd">🔒</span>`;
+  if(c.f&&c.f.safari) t+=` <span style="color:var(--good)">🌴</span>`;
+  const adm = ADMIN?` tl-open" onclick="editCatch(${c.idx})" title="Sonderfälle bearbeiten`:"";
+  return `<span class="chip${adm}"><span class="spwrap">${icon(c.name,c.tier!=null?{t:c.tier,n:[c.name],e:c.e}:null,'sm')} ${badge} ${c.name} <b>+${eff}</b>${t}</span></span>`;
+}
+function catchEditorHTML(){
+  const c=DATA.caught[CEDIT]; if(!c) return "";
+  const f=flagsFor(c);
+  return `<div class="editor" id="catchEditor">
+    <b>Fang bearbeiten:</b> ${icon(c.pokemon,resolve(c.pokemon),'sm')} ${esc(memName(c.pokemon))}
+      <span class="ktag">${esc(uname(c.user_id))} · ${esc(c.date||"")}</span>
+    <div style="display:flex;flex-wrap:wrap;gap:14px;margin:10px 0">
+      ${CTYPES.map(([k,l,v])=>`<label class="lure-lbl"><input type="checkbox" class="cf_${k}" ${f[k]?"checked":""}> ${l} <span class="ktag">(${(k==='secret'||k==='safari')?'+':''}${v})</span></label>`).join("")}
+    </div>
+    <div class="bar" style="justify-content:flex-start;margin:0">
+      <button class="btn primary" onclick="saveCEdit()">✓ Speichern</button>
+      <button class="btn" onclick="cancelCEdit()">Abbrechen</button>
+      <button class="btn" onclick="deleteCatch(${CEDIT})" style="margin-left:auto">🗑 Fang löschen</button>
+    </div>
+    <p class="hint" style="margin:8px 0 0">Legendär/Mythos = 200 · Alpha = 75 · Egg = max(35, Tier-Wert) · Secret +20 · Safari +10. Boni stapeln; Legendär/Alpha/Egg ersetzen den Tier-Wert.</p>
+  </div>`;
+}
+function editCatch(i){
+  CEDIT=i;
+  if(TAB!=="lb"){ TAB="lb"; document.querySelectorAll(".tab").forEach(el=>el.classList.toggle("active",el.dataset.tab==="lb")); renderSeasonBar(); }
+  render();
+  const e=document.getElementById("catchEditor"); if(e) e.scrollIntoView({block:"nearest"});
+}
+function saveCEdit(){
+  const c=DATA.caught[CEDIT]; if(!c){CEDIT=null;render();return;}
+  const g=k=>{const e=document.querySelector(".cf_"+k);return e?e.checked:false;};
+  const flags={legendary:g("legendary"),alpha:g("alpha"),egg:g("egg"),secret:g("secret"),safari:g("safari")};
+  Object.assign(c,flags);                 // auf den caught-Eintrag schreiben (für Export/Repo)
+  CATCH_FLAGS[catchKey(c)]=flags;         // Overlay -> überlebt Repo-Reloads
+  saveData(); saveCFlags(); CEDIT=null; toast("✓ Fang aktualisiert"); render();
+}
+function cancelCEdit(){CEDIT=null;render();}
+function deleteCatch(i){
+  if(!confirm("Diesen Fang wirklich löschen?"))return;
+  DATA.caught.splice(i,1); saveData(); CEDIT=null; toast("Fang gelöscht"); render();
 }
 function renderLeaderboard(){
   const {rows,unknown,teamBonus,uniqueLines}=computeScores();
   const total=rows.reduce((s,r)=>s+r.pts,0);
   let h=`<div class="card">
     <h2>🏆 Punkte-Leaderboard</h2>
-    <p class="hint">Team-Gesamt: <b style="color:var(--accent)">${total} pts</b> · ${rows.length} Spieler · ${(DATA.caught||[]).length} Shinys · ${uniqueLines} Linien · Unique-Bonus ${teamBonus} pts. Gleichstand = höhere Position.</p>
-    <p class="hint" style="margin-top:-6px">Regeln: Erst-Fang einer Linie = volle Tier-Punkte. Team-Erstfang der Linie: <span style="color:var(--good)">+8</span>. Weiterer Fang derselben Linie durch <b>denselben</b> Spieler: nur <span class="ktag">+1</span> (Shiny-Alpha: <span style="color:var(--accent)">+35</span>).</p>`;
+    <p class="hint">${rows.length} Spieler · ${(DATA.caught||[]).length} Shinys · ${uniqueLines} Linien · Unique-Bonus ${teamBonus} pts. Gleichstand = höhere Position.${ADMIN?" <b>Klick auf einen Fang</b>, um Sonderfälle (Legendär/Alpha/Egg/Secret/Safari) zu setzen.":""}</p>
+    <p class="hint" style="margin-top:-6px">Regeln: Erst-Fang einer Linie = Tier-Punkte, Team-Erstfang <span style="color:var(--good)">+8</span>, Duplikat <span class="ktag">+1</span>. Sonderfälle: Legendär/Mythos 200 · Alpha 75 · Egg max(35, Tier) · Secret +20 · Safari +10.</p>`;
+  if(ADMIN && CEDIT!=null) h+=catchEditorHTML();
   if(!rows.length){ h+=`<div class="empty">Noch keine gefangenen Shinys in den Daten.</div></div>`; view.innerHTML=h; return; }
   h+=`<table><thead><tr><th>#</th><th>Spieler</th><th>Fänge</th><th style="text-align:right">Punkte</th></tr></thead><tbody>`;
   for(const r of rows){
@@ -916,8 +980,10 @@ function renderLeaderboard(){
       <td>${chips||'<span class="ktag">—</span>'}</td>
       <td class="pts">${r.pts}</td></tr>`;
   }
-  h+=`</tbody></table>`;
-  if(unknown.length) h+=`<p class="hint" style="margin-top:12px">⚠ Nicht in Tierlist (0 Punkte): ${unknown.map(u=>`<code>${u}</code>`).join(" ")}</p>`;
+  h+=`</tbody><tfoot><tr style="border-top:2px solid var(--border)">
+      <td></td><td colspan="2" style="text-align:right"><b>Gesamt</b></td>
+      <td class="pts" style="font-size:17px">${total}</td></tr></tfoot></table>`;
+  if(unknown.length) h+=`<p class="hint" style="margin-top:12px">⚠ Nicht in Tierlist (0 Punkte): ${unknown.map(u=>`<code>${esc(u)}</code>`).join(" ")}</p>`;
   h+=`</div>`;
   view.innerHTML=h;
 }
@@ -1264,6 +1330,13 @@ function exportHordes(){
   const blob=new Blob([JSON.stringify({hordes:HORDES},null,2)],{type:"application/json"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="hordes.json";
   document.body.appendChild(a);a.click();a.remove();toast("⬇ hordes.json exportiert");
+}
+function exportHunts(){
+  // IDs wieder als Zahlen ausgeben (bot-kompatibel), inkl. der gesetzten Sonderfall-Flags
+  const t=JSON.stringify(DATA,null,2).replace(/"(\d{16,})"(?!\s*:)/g,'$1');
+  const blob=new Blob([t],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="hunts.json";
+  document.body.appendChild(a);a.click();a.remove();toast("⬇ hunts.json exportiert");
 }
 /* Rohes Horden-Array in HORDES übernehmen (von Import ODER Repo-Auto-Load genutzt) */
 function applyHordes(arr){
