@@ -1069,6 +1069,7 @@ function renderLoc(){
       <button class="btn" onclick="document.getElementById('hordefile').click()">⬆ Import</button>
       <input type="file" id="hordefile" accept=".json" style="display:none" onchange="importHordes(this)">
       <button class="btn" onclick="exportHordes()">⬇ Export</button>
+      <button class="btn" onclick="pullRepo()" title="Aktuelle hordes.json aus dem Repo laden">⟳ Repo laden</button>
       ${HORDES.length?"":'<button class="btn" onclick="seedExampleHorde()">Beispiel einfügen</button>'}
     </div>`:""}`;
   if(ADMIN && ED && !ED.id) h+=hordeEditorHTML(); // neue Horde: Editor oben
@@ -1264,6 +1265,17 @@ function exportHordes(){
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="hordes.json";
   document.body.appendChild(a);a.click();a.remove();toast("⬇ hordes.json exportiert");
 }
+/* Rohes Horden-Array in HORDES übernehmen (von Import ODER Repo-Auto-Load genutzt) */
+function applyHordes(arr){
+  HORDES=arr.map(h=>({id:h.id||("h"+Date.now().toString(36)+Math.random().toString(36).slice(2,5)),
+    loc:h.loc||"",region:h.region||"",level:h.level||"",note:h.note||"",method:h.method||(h.size===3?"horde3":"horde5"),hab:h.hab||"",
+    members:(h.members||[]).map(m=>{
+      let s=m.s;
+      if((!s||!Object.keys(s).length) && m.p!=null){const v=Number(m.p)||0; s={fruehling:v,sommer:v,herbst:v,winter:v};}
+      return {name:m.name||"",s:s||{},tod:m.tod||"immer",lure:!!m.lure};
+    })}));
+  saveHordes();
+}
 function importHordes(input){
   const f=input.files[0];if(!f)return;input.value="";
   const r=new FileReader();
@@ -1271,16 +1283,31 @@ function importHordes(input){
     const o=JSON.parse(r.result);
     const arr=Array.isArray(o)?o:(o.hordes||[]);
     if(!Array.isArray(arr))throw new Error("kein hordes-Array gefunden");
-    HORDES=arr.map(h=>({id:h.id||("h"+Date.now().toString(36)+Math.random().toString(36).slice(2,5)),
-      loc:h.loc||"",region:h.region||"",level:h.level||"",note:h.note||"",method:h.method||(h.size===3?"horde3":"horde5"),hab:h.hab||"",
-      members:(h.members||[]).map(m=>{
-        let s=m.s;
-        if((!s||!Object.keys(s).length) && m.p!=null){const v=Number(m.p)||0; s={fruehling:v,sommer:v,herbst:v,winter:v};}
-        return {name:m.name||"",s:s||{},tod:m.tod||"immer",lure:!!m.lure};
-      })}));
-    saveHordes();ED=null;toast("⬆ "+HORDES.length+" Horden importiert");render();
+    applyHordes(arr);ED=null;toast("⬆ "+HORDES.length+" Horden importiert");render();
   }catch(e){toast("✗ Import fehlgeschlagen: "+e.message,true);}};
   r.readAsText(f);
+}
+/* ---- Auto-Load aus dem Repo (GitHub Pages), damit alle denselben Stand sehen ---- */
+const REPO_HORDES_URL="hordes.json"; // liegt im Repo -> wird automatisch geladen
+const REPO_HUNTS_URL="hunts.json";   // nur wenn der Bot sie ins Repo pusht (sonst 404 -> ignoriert)
+async function loadRepoData(){
+  if(!location.protocol.startsWith("http")) return; // lokal per Datei geöffnet -> kein Auto-Load
+  // Horden: Viewer bekommen immer den Repo-Stand; Admin nur, wenn noch keine lokalen Horden da sind
+  if(!ADMIN || !HORDES.length){
+    try{ const r=await fetch(REPO_HORDES_URL+"?t="+Date.now());
+      if(r.ok){ const j=await r.json(); const arr=Array.isArray(j)?j:(j.hordes||[]); if(arr.length) applyHordes(arr); } }catch(e){}
+  }
+  // Hunts: immer den neuesten Bot-Stand (falls im Repo veröffentlicht)
+  if(REPO_HUNTS_URL){
+    try{ const r=await fetch(REPO_HUNTS_URL+"?t="+Date.now());
+      if(r.ok){ const j=await r.json(); if(j&&(j.active||j.caught)){ DATA=j; saveData(); if(j.users){Object.assign(NAMES,j.users);saveNames();} } } }catch(e){}
+  }
+  refreshCaughtLines(); render();
+}
+async function pullRepo(){ // Admin-Button: Repo-Horden manuell laden
+  try{ const r=await fetch(REPO_HORDES_URL+"?t="+Date.now());
+    if(r.ok){ const j=await r.json(); const arr=Array.isArray(j)?j:(j.hordes||[]); applyHordes(arr); ED=null; toast("⟳ "+HORDES.length+" Horden aus Repo geladen"); render(); return; } }catch(e){}
+  toast("✗ Repo-Horden nicht erreichbar",true);
 }
 function seedExampleHorde(){
   HORDES.push({id:"h"+Date.now().toString(36),loc:"Beispiel: Route 119",region:"Hoenn",method:"horde5",hab:"gras",
@@ -1391,6 +1418,7 @@ applyAdminUI();
 renderSeasonBar();
 render();
 fetchPkmnIndex(); // holt einmalig Dex-IDs von der PokeAPI für Bilder (danach gecacht)
+loadRepoData();   // holt hordes.json (u. optional hunts.json) automatisch aus dem Repo (GitHub Pages)
 
 /* Nach-oben-Button: sichtbar ab 1,5 Bildschirmhöhen Scroll */
 (function(){
