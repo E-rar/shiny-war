@@ -163,7 +163,6 @@
     <div class="tab" data-tab="hunt" onclick="showTab('hunt')">🎯 Wer huntet was</div>
     <div class="tab active" data-tab="loc" onclick="showTab('loc')">🗺️ Horden</div>
     <div class="tab" data-tab="tier" onclick="showTab('tier')">📋 Tierlist</div>
-    <div class="tab" data-tab="names" onclick="showTab('names')">👤 Namen</div>
   </div>
 
   <div id="view"></div>
@@ -800,7 +799,9 @@ function toast(msg,isErr){
 
 function uname(id){
   const s=String(id);
-  if(NAMES[s]) return NAMES[s];
+  // Discord-Name bevorzugt aus den Bot-Daten (hunts.json "users"), sonst lokal zugeordnet
+  const u=(DATA.users&&DATA.users[s])||NAMES[s];
+  if(u) return u;
   return "User "+s.slice(0,4)+"…"+s.slice(-4);
 }
 
@@ -885,7 +886,6 @@ function render(){
   if(TAB==="hunt") return renderHunt();
   if(TAB==="tier") return renderTierlist();
   if(TAB==="loc") return renderLoc();
-  if(TAB==="names") return renderNames();
 }
 
 function catchChip(c){
