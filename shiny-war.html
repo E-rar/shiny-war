@@ -1,0 +1,1405 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shiny War · PokeMMO Team Tracker</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2230; --border:#2b3444;
+    --text:#e6edf3; --muted:#8b98a9; --accent:#ffd23f; --accent2:#5ac8fa;
+    --good:#3fb950; --warn:#e3b341; --bad:#f85149;
+    --t0:#ffd23f; --t1:#ff9f45; --t2:#ff6f91; --t3:#c678dd;
+    --t4:#5ac8fa; --t5:#3fb950; --t6:#8b98a9; --t7:#5c6b7a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1200px 600px at 50% -10%,#182030,#0d1117 60%);
+    color:var(--text);font-family:'Segoe UI',system-ui,-apple-system,Roboto,sans-serif;min-height:100vh}
+  header{padding:22px 20px 10px;text-align:center}
+  h1{margin:0;font-size:26px;letter-spacing:.5px}
+  h1 .spark{color:var(--accent)}
+  .sub{color:var(--muted);font-size:13px;margin-top:4px}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 16px 60px}
+  .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:center;margin:16px 0}
+  .btn{background:var(--panel2);border:1px solid var(--border);color:var(--text);
+    padding:8px 14px;border-radius:9px;cursor:pointer;font-size:13px;transition:.15s}
+  .btn:hover{border-color:var(--accent);color:var(--accent)}
+  .btn.primary{background:var(--accent);color:#1a1a1a;border-color:var(--accent);font-weight:600}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin:18px 0}
+  .tab{padding:10px 16px;border-radius:10px 10px 0 0;background:var(--panel);border:1px solid var(--border);
+    border-bottom:none;cursor:pointer;color:var(--muted);font-size:14px;font-weight:500}
+  .tab.active{background:var(--panel2);color:var(--accent);box-shadow:inset 0 -2px 0 var(--accent)}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:16px}
+  .card h2{margin:0 0 4px;font-size:17px}
+  .card .hint{color:var(--muted);font-size:12.5px;margin:0 0 14px}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--border)}
+  th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.4px}
+  tr:hover td{background:rgba(255,255,255,.02)}
+  .rank{font-weight:700;font-size:16px;width:52px}
+  .rank.g1{color:#ffd23f}.rank.g2{color:#c9d1d9}.rank.g3{color:#e0925f}
+  .pts{font-weight:700;color:var(--accent);font-size:15px;text-align:right}
+  .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;color:#10141c}
+  .chip{display:inline-block;padding:3px 9px;border-radius:7px;font-size:12px;background:var(--panel2);
+    border:1px solid var(--border);margin:2px 3px 2px 0}
+  .warnrow td{background:rgba(227,179,65,.07)}
+  .dup{color:var(--warn);font-weight:700}
+  .name-input{background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;
+    padding:4px 8px;font-size:13px;width:150px}
+  .split-row{display:flex;align-items:center;gap:10px;margin:7px 0}
+  .split-label{width:150px;font-size:13px;flex-shrink:0;text-align:right;color:var(--text)}
+  .split-track{flex:1;background:var(--panel2);border-radius:6px;height:22px;position:relative;overflow:hidden}
+  .split-fill{height:100%;border-radius:6px;display:flex;align-items:center;padding-left:8px;
+    font-size:12px;font-weight:700;color:#10141c;min-width:26px;transition:width .4s}
+  .split-count{width:38px;font-size:13px;color:var(--muted)}
+  .drop{border:2px dashed var(--border);border-radius:12px;padding:26px;text-align:center;color:var(--muted);
+    font-size:14px;transition:.15s;cursor:pointer}
+  .drop.hot{border-color:var(--accent);color:var(--accent);background:rgba(255,210,63,.05)}
+  .status{font-size:12.5px;color:var(--muted);text-align:center;margin-top:6px}
+  .status.ok{color:var(--good)}.status.err{color:var(--bad)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:720px){.grid2{grid-template-columns:1fr}.split-label{width:96px}}
+  .muted{color:var(--muted)}
+  .ktag{font-size:11px;color:var(--muted)}
+  .empty{text-align:center;color:var(--muted);padding:30px;font-size:14px}
+  .spr{width:34px;height:34px;object-fit:contain;vertical-align:middle;image-rendering:auto;flex-shrink:0}
+  .mono{width:30px;height:30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;
+    font-size:11px;font-weight:800;color:#10141c;vertical-align:middle;flex-shrink:0}
+  .spwrap{display:inline-flex;align-items:center;gap:8px}
+  .spr-sm{width:22px;height:22px;object-fit:contain;vertical-align:middle}
+  #toast{position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(-80px);
+    background:var(--good);color:#08120a;padding:11px 20px;border-radius:10px;font-weight:700;font-size:14px;
+    box-shadow:0 8px 24px rgba(0,0,0,.4);opacity:0;transition:.3s;z-index:999;pointer-events:none}
+  #toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+  #toast.err{background:var(--bad);color:#fff}
+  #toTop{position:fixed;bottom:22px;right:22px;width:46px;height:46px;border-radius:50%;background:var(--accent);
+    color:#1a1a1a;border:none;font-size:22px;font-weight:800;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.45);
+    opacity:0;visibility:hidden;transform:translateY(12px);transition:.2s;z-index:998}
+  #toTop.show{opacity:1;visibility:visible;transform:translateY(0)}
+  #toTop:hover{filter:brightness(1.08)}
+  .seasonbar{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:4px 0 0}
+  .season{padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:var(--panel);
+    cursor:pointer;font-size:13px;color:var(--muted);transition:.15s}
+  .season:hover{border-color:var(--accent2)}
+  .season.active{color:#10141c;font-weight:700;border-color:transparent}
+  .season.active[data-s="fruehling"]{background:#7bd88f}
+  .season.active[data-s="sommer"]{background:#ffd23f}
+  .season.active[data-s="herbst"]{background:#ff9f45}
+  .season.active[data-s="winter"]{background:#8fd3ff}
+  .season.timechip.active{background:#b98cff;color:#10141c;border-color:transparent}
+  .hcard{border:1px solid var(--border);border-radius:11px;padding:14px;margin-bottom:12px;background:var(--panel2)}
+  .hcard h3{margin:0 0 2px;font-size:15px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .hcard .loc-note{color:var(--muted);font-size:12.5px;margin:0 0 10px}
+  .hactions{margin-left:auto;display:flex;gap:6px}
+  .mrow{display:flex;align-items:center;gap:10px;margin:5px 0}
+  .mrow .mname{width:150px;flex-shrink:0;font-size:13px;display:flex;align-items:center;gap:7px}
+  .mrow .mtrack{flex:1;background:var(--panel);border-radius:6px;height:20px;overflow:hidden}
+  .mrow .mfill{height:100%;border-radius:6px;display:flex;align-items:center;padding-left:7px;font-size:11px;font-weight:700;color:#10141c;min-width:22px}
+  .mrow .mpct{width:44px;text-align:right;font-size:13px;color:var(--muted)}
+  .stacked{display:flex;height:26px;border-radius:7px;overflow:hidden;border:1px solid var(--border);margin:8px 0}
+  .stacked > div{display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#10141c;min-width:0;overflow:hidden;white-space:nowrap}
+  .evexp{font-size:12.5px;color:var(--muted)}
+  .evexp b{color:var(--accent)}
+  /* Editor */
+  .editor{border:1px dashed var(--accent);border-radius:11px;padding:16px;margin-bottom:16px;background:rgba(255,210,63,.04)}
+  .editor .frow{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+  .editor input,.editor select{background:var(--bg);border:1px solid var(--border);color:var(--text);
+    border-radius:7px;padding:7px 9px;font-size:13px}
+  .ed-loc{flex:2;min-width:160px}.ed-region{flex:1;min-width:120px}.ed-note{flex:3;min-width:180px}
+  .edrow{display:flex;gap:6px;align-items:center;margin:6px 0;flex-wrap:wrap;padding:6px;border-radius:8px;background:var(--panel)}
+  .edrow .em_name{flex:2;min-width:130px}
+  .seasin{width:58px !important;text-align:center}
+  .tod-sel{background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px;font-size:11px;max-width:120px}
+  .seaslab{font-size:10px;color:var(--muted);width:58px;text-align:center;display:inline-block}
+  .edhead{display:flex;gap:6px;padding:0 6px 2px 140px;flex-wrap:wrap}
+  .xbtn{background:transparent;border:none;color:var(--bad);cursor:pointer;font-size:16px;padding:0 4px}
+  .em_prev{width:26px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+  .em_en{min-width:74px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .editor input.bad{border-color:var(--bad) !important;background:rgba(248,81,73,.08)}
+  .editor input.good{border-color:var(--good) !important}
+  .bad-txt{color:var(--bad) !important}
+  .chip.tl-open{cursor:pointer;transition:.12s}
+  .chip.tl-open:hover{border-color:var(--accent);color:var(--accent);transform:translateY(-1px)}
+  .chip.tl-done{opacity:.5}
+  .chip.tl-done s{text-decoration-color:var(--good)}
+  .badge.meth-horde5{background:#5ac8fa;color:#10141c}
+  .badge.meth-horde3{background:#c678dd;color:#10141c}
+  .badge.meth-angeln{background:#47c8b0;color:#10141c}
+  .badge.meth-single{background:#9aa7b5;color:#10141c}
+  .ed-size{min-width:120px}
+  .em_lure{vertical-align:middle}
+  .lure-lbl{font-size:11px;color:var(--muted);display:inline-flex;align-items:center;gap:3px;white-space:nowrap}
+  .hab-sel{background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:3px 6px;font-size:12px;cursor:pointer}
+  @media(max-width:720px){.mrow .mname{width:110px}.edhead{padding-left:6px}}
+  code{background:var(--panel2);padding:2px 6px;border-radius:5px;font-size:12.5px;color:var(--accent2)}
+  pre{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;overflow:auto;font-size:12px;color:var(--muted)}
+  .legend{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:8px;font-size:11px}
+  .legend span{display:flex;align-items:center;gap:4px;color:var(--muted)}
+  .dot{width:10px;height:10px;border-radius:3px;display:inline-block}
+</style>
+</head>
+<body>
+<header>
+  <h1><span class="spark">✦</span> Shiny War <span class="spark">✦</span></h1>
+  <div class="sub">PokeMMO Team-Tracker · Horden · Spezies-Split · Punkte-Leaderboard</div>
+</header>
+
+<div class="wrap">
+  <div class="bar" id="loadbar">
+    <button class="btn primary" onclick="document.getElementById('file').click()">📂 hunts.json laden</button>
+    <input type="file" id="file" accept=".json" style="display:none">
+    <button class="btn" onclick="document.getElementById('dbfile').click()">🖼️ pokemon_data.json (Bilder)</button>
+    <input type="file" id="dbfile" accept=".json" style="display:none">
+    <button class="btn" onclick="loadFromUrl()">🌐 Von URL laden</button>
+    <button class="btn" onclick="useDemo()">↺ Beispieldaten</button>
+  </div>
+  <div id="modeline" style="text-align:center;margin:2px 0 6px"></div>
+  <div class="status" id="status">Beispieldaten geladen · <span class="ktag">Bilder werden von der PokeAPI geladen…</span></div>
+
+  <div class="seasonbar" id="seasonbar"></div>
+
+  <div class="tabs">
+    <div class="tab" data-tab="lb" onclick="showTab('lb')">🏆 Leaderboard</div>
+    <div class="tab" data-tab="hunt" onclick="showTab('hunt')">🎯 Wer huntet was</div>
+    <div class="tab active" data-tab="loc" onclick="showTab('loc')">🗺️ Horden</div>
+    <div class="tab" data-tab="tier" onclick="showTab('tier')">📋 Tierlist</div>
+    <div class="tab" data-tab="names" onclick="showTab('names')">👤 Namen</div>
+  </div>
+
+  <div id="view"></div>
+</div>
+<div id="toast"></div>
+<button id="toTop" title="Nach oben" aria-label="Nach oben" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+
+<script>
+/* ============================================================
+   TIERLIST  (offizielle deutsche Namen + Entwicklungslinien)
+   n = [deutsche Namen der ganzen Linie], e = englischer Basisname
+   Jede Linie zählt dieselben Punkte (Event-Regel).
+   ============================================================ */
+const LINES = [
+ // TIER 0 — 50 pts
+ {t:0,p:50,e:"Bulbasaur",n:["Bisasam","Bisaknosp","Bisaflor"]},
+ {t:0,p:50,e:"Charmander",n:["Glumanda","Glutexo","Glurak"]},
+ {t:0,p:50,e:"Squirtle",n:["Schiggy","Schillok","Turtok"]},
+ {t:0,p:50,e:"Eevee",n:["Evoli","Aquana","Blitza","Flamara","Psiana","Nachtara","Folipurba","Glaziola"]},
+ {t:0,p:50,e:"Porygon",n:["Porygon","Porygon2","Porygon-Z"]},
+ {t:0,p:50,e:"Snorlax",n:["Relaxo","Mampfaxo"]},
+ {t:0,p:50,e:"Chikorita",n:["Endivie","Lorblatt","Meganie"]},
+ {t:0,p:50,e:"Cyndaquil",n:["Feurigel","Igelavar","Tornupto"]},
+ {t:0,p:50,e:"Totodile",n:["Karnimani","Tyracroc","Impergator"]},
+ {t:0,p:50,e:"Togepi",n:["Togepi","Togetic","Togekiss"]},
+ {t:0,p:50,e:"Tyrogue",n:["Rabauz","Kicklee","Nockchan","Kapoera"]},
+ {t:0,p:50,e:"Treecko",n:["Geckarbor","Reptain","Gewaldro"]},
+ {t:0,p:50,e:"Torchic",n:["Flemmli","Jungglut","Lohgock"]},
+ {t:0,p:50,e:"Mudkip",n:["Hydropi","Moorabbel","Sumpex"]},
+ {t:0,p:50,e:"Shedinja",n:["Ninjatom"]},
+ {t:0,p:50,e:"Beldum",n:["Tanhel","Metang","Metagross"]},
+ {t:0,p:50,e:"Turtwig",n:["Chelast","Chelcarain","Chelterrar"]},
+ {t:0,p:50,e:"Chimchar",n:["Panflam","Panpyro","Panferno"]},
+ {t:0,p:50,e:"Piplup",n:["Plinfa","Pliprin","Impoleon"]},
+ {t:0,p:50,e:"Riolu",n:["Riolu","Lucario"]},
+ {t:0,p:50,e:"Rotom",n:["Rotom"]},
+ {t:0,p:50,e:"Snivy",n:["Serpifeu","Efoserp","Serpiroyal"]},
+ {t:0,p:50,e:"Tepig",n:["Floink","Ferkokel","Flambirex"]},
+ {t:0,p:50,e:"Oshawott",n:["Ottaro","Zwottronin","Admurai"]},
+ // TIER 1 — 45 pts
+ {t:1,p:45,e:"Chansey",n:["Chaneira","Heiteira","Wonneira"]},
+ {t:1,p:45,e:"Kangaskhan",n:["Kangama"]},
+ {t:1,p:45,e:"Scyther",n:["Sichlor","Scherox"]},
+ {t:1,p:45,e:"Pinsir",n:["Pinsir"]},
+ {t:1,p:45,e:"Sudowoodo",n:["Mogelbaum","Mobai"]},
+ {t:1,p:45,e:"Skarmory",n:["Panzaeron"]},
+ {t:1,p:45,e:"Shroomish",n:["Knilz","Kapilz"]},
+ {t:1,p:45,e:"Slakoth",n:["Bummelz","Muntier","Letarking"]},
+ {t:1,p:45,e:"Skitty",n:["Eneco","Enekoro"]},
+ {t:1,p:45,e:"Plusle",n:["Plusle"]},
+ {t:1,p:45,e:"Minun",n:["Minun"]},
+ {t:1,p:45,e:"Gulpin",n:["Schluppuck","Schlukwech"]},
+ {t:1,p:45,e:"Castform",n:["Formeo"]},
+ {t:1,p:45,e:"Absol",n:["Absol"]},
+ {t:1,p:45,e:"Burmy",n:["Burmy","Burmadame","Moterpel"]},
+ {t:1,p:45,e:"Combee",n:["Wadribie","Honweisel"]},
+ {t:1,p:45,e:"Cherubi",n:["Kikugi","Kaumalat"]},
+ {t:1,p:45,e:"Spiritomb",n:["Kryppuk"]},
+ {t:1,p:45,e:"Skorupi",n:["Pionskora","Piondragi"]},
+ {t:1,p:45,e:"Carnivine",n:["Venuflibis"]},
+ {t:1,p:45,e:"Pansage",n:["Vegimak","Vegichita"]},
+ {t:1,p:45,e:"Pansear",n:["Grillmak","Grillchita"]},
+ {t:1,p:45,e:"Panpour",n:["Sodamak","Sodachita"]},
+ {t:1,p:45,e:"Drilbur",n:["Rotomurf","Stalobor"]},
+ {t:1,p:45,e:"Audino",n:["Ohrdoch"]},
+ {t:1,p:45,e:"Ducklett",n:["Piccolente","Swaroness"]},
+ {t:1,p:45,e:"Emolga",n:["Emolga"]},
+ {t:1,p:45,e:"Alomomola",n:["Mamolida"]},
+ {t:1,p:45,e:"Larvesta",n:["Ignivor","Ramoth"]},
+ // TIER 2 — 40 pts
+ {t:2,p:40,e:"Clefairy",n:["Piepi","Pixi","Pii"]},
+ {t:2,p:40,e:"Shellder",n:["Muschas","Austos"]},
+ {t:2,p:40,e:"Mr. Mime",n:["Pantimos","Pantimimi"]},
+ {t:2,p:40,e:"Lapras",n:["Lapras"]},
+ {t:2,p:40,e:"Omanyte",n:["Amonitas","Amoroso"]},
+ {t:2,p:40,e:"Kabuto",n:["Kabuto","Kabutops"]},
+ {t:2,p:40,e:"Aerodactyl",n:["Aerodactyl"]},
+ {t:2,p:40,e:"Aipom",n:["Griffel","Ambidiffel"]},
+ {t:2,p:40,e:"Pineco",n:["Tannza","Forstellka"]},
+ {t:2,p:40,e:"Qwilfish",n:["Baldorfish"]},
+ {t:2,p:40,e:"Shuckle",n:["Pottrott"]},
+ {t:2,p:40,e:"Corsola",n:["Corasonn"]},
+ {t:2,p:40,e:"Houndour",n:["Hunduster","Hundemon"]},
+ {t:2,p:40,e:"Miltank",n:["Miltank"]},
+ {t:2,p:40,e:"Ralts",n:["Trasla","Kirlia","Guardevoir","Galagladi"]},
+ {t:2,p:40,e:"Nincada",n:["Nincada","Ninjask"]},
+ {t:2,p:40,e:"Lileep",n:["Liliep","Wielie"]},
+ {t:2,p:40,e:"Anorith",n:["Anorith","Armaldo"]},
+ {t:2,p:40,e:"Feebas",n:["Barschwa","Milotic"]},
+ {t:2,p:40,e:"Relicanth",n:["Relicanth"]},
+ {t:2,p:40,e:"Bagon",n:["Kindwurm","Shokombo","Brutalanda"]},
+ {t:2,p:40,e:"Cranidos",n:["Koknodon","Rameidon"]},
+ {t:2,p:40,e:"Shieldon",n:["Schilterus","Bollterus"]},
+ {t:2,p:40,e:"Tirtouga",n:["Galapaflos","Karippas"]},
+ {t:2,p:40,e:"Archen",n:["Flapteryx","Aeropteryx"]},
+ {t:2,p:40,e:"Zorua",n:["Zorua","Zoroark"]},
+ {t:2,p:40,e:"Pawniard",n:["Gladiantri","Caesurio"]},
+ // TIER 3 — 30 pts
+ {t:3,p:30,e:"Vulpix",n:["Vulpix","Vulnona"]},
+ {t:3,p:30,e:"Growlithe",n:["Fukano","Arkani"]},
+ {t:3,p:30,e:"Farfetch'd",n:["Porenta"]},
+ {t:3,p:30,e:"Exeggcute",n:["Owei","Kokowei"]},
+ {t:3,p:30,e:"Staryu",n:["Sterndu","Starmie"]},
+ {t:3,p:30,e:"Jynx",n:["Rossana","Kussilla"]},
+ {t:3,p:30,e:"Magmar",n:["Magmar","Magbrant","Magby"]},
+ {t:3,p:30,e:"Tauros",n:["Tauros"]},
+ {t:3,p:30,e:"Dratini",n:["Dratini","Dragonir","Dragoran"]},
+ {t:3,p:30,e:"Sentret",n:["Wiesor","Wieselkopf"]},
+ {t:3,p:30,e:"Ledyba",n:["Ledyba","Ledian"]},
+ {t:3,p:30,e:"Sunkern",n:["Sonnkern","Sonnflora"]},
+ {t:3,p:30,e:"Yanma",n:["Yanma","Yanmega"]},
+ {t:3,p:30,e:"Murkrow",n:["Kramurx","Kramshef"]},
+ {t:3,p:30,e:"Misdreavus",n:["Traunfugil","Traunmagil"]},
+ {t:3,p:30,e:"Gligar",n:["Skorgla","Skorgro"]},
+ {t:3,p:30,e:"Heracross",n:["Skaraborn"]},
+ {t:3,p:30,e:"Remoraid",n:["Remoraid","Octillery"]},
+ {t:3,p:30,e:"Delibird",n:["Botogel"]},
+ {t:3,p:30,e:"Mantine",n:["Mantax","Mantirps"]},
+ {t:3,p:30,e:"Nosepass",n:["Nasgnet","Voltensso"]},
+ {t:3,p:30,e:"Volbeat",n:["Volbeat"]},
+ {t:3,p:30,e:"Illumise",n:["Illumise"]},
+ {t:3,p:30,e:"Carvanha",n:["Kanivanha","Tohaido"]},
+ {t:3,p:30,e:"Wailmer",n:["Wailmer","Wailord"]},
+ {t:3,p:30,e:"Cacnea",n:["Tuska","Noktuska"]},
+ {t:3,p:30,e:"Zangoose",n:["Zangoose"]},
+ {t:3,p:30,e:"Seviper",n:["Vipitis"]},
+ {t:3,p:30,e:"Barboach",n:["Schmerbe","Welsar"]},
+ {t:3,p:30,e:"Kecleon",n:["Kecleon"]},
+ {t:3,p:30,e:"Tropius",n:["Tropius"]},
+ // TIER 4 — 15 pts
+ {t:4,p:15,e:"Oddish",n:["Myrapla","Duflor","Giflor","Blubella"]},
+ {t:4,p:15,e:"Venonat",n:["Bluzuk","Omot"]},
+ {t:4,p:15,e:"Meowth",n:["Mauzi","Snobilikat"]},
+ {t:4,p:15,e:"Drowzee",n:["Traumato","Hypno"]},
+ {t:4,p:15,e:"Electabuzz",n:["Elektek","Elevoltek","Elekid"]},
+ {t:4,p:15,e:"Hoothoot",n:["Hoothoot","Noctuh"]},
+ {t:4,p:15,e:"Spinarak",n:["Webarak","Ariados"]},
+ {t:4,p:15,e:"Wooper",n:["Felino","Morlord"]},
+ {t:4,p:15,e:"Snubbull",n:["Snubbull","Granbull"]},
+ {t:4,p:15,e:"Sneasel",n:["Sniebel","Snibunna"]},
+ {t:4,p:15,e:"Larvitar",n:["Larvitar","Pupitar","Despotar"]},
+ {t:4,p:15,e:"Lotad",n:["Loturzel","Lombrero","Kappalores"]},
+ {t:4,p:15,e:"Surskit",n:["Gehweiher","Maskeregen"]},
+ {t:4,p:15,e:"Spinda",n:["Pandir"]},
+ {t:4,p:15,e:"Trapinch",n:["Knacklion","Vibrava","Libelldra"]},
+ {t:4,p:15,e:"Lunatone",n:["Lunastein"]},
+ {t:4,p:15,e:"Corphish",n:["Krebscorps","Krebutack"]},
+ {t:4,p:15,e:"Kricketot",n:["Zirpurze","Zirpeise"]},
+ {t:4,p:15,e:"Pachirisu",n:["Pachirisu"]},
+ {t:4,p:15,e:"Buneary",n:["Haspiror","Schlapor"]},
+ {t:4,p:15,e:"Purrloin",n:["Felilou","Kleoparda"]},
+ {t:4,p:15,e:"Pidove",n:["Dusselgurr","Navitaub","Fasasnob"]},
+ {t:4,p:15,e:"Scraggy",n:["Zurrokex","Irokex"]},
+ {t:4,p:15,e:"Axew",n:["Milza","Sharfax","Maxax"]},
+ {t:4,p:15,e:"Bouffalant",n:["Bisofank"]},
+ {t:4,p:15,e:"Rufflet",n:["Geronimatz","Washakwil"]},
+ {t:4,p:15,e:"Heatmor",n:["Furnifraß"]},
+ {t:4,p:15,e:"Deino",n:["Kapuno","Duodino","Trikephalo"]},
+ // TIER 5 — 10 pts
+ {t:5,p:10,e:"Caterpie",n:["Raupy","Safcon","Smettbo"]},
+ {t:5,p:10,e:"Weedle",n:["Hornliu","Kokuna","Bibor"]},
+ {t:5,p:10,e:"Pikachu",n:["Pikachu","Raichu","Pichu"]},
+ {t:5,p:10,e:"Nidoran♂",n:["Nidoran♂","Nidorino","Nidoking"]},
+ {t:5,p:10,e:"Jigglypuff",n:["Pummeluff","Knuddeluff","Fluffeluff"]},
+ {t:5,p:10,e:"Paras",n:["Paras","Parasek"]},
+ {t:5,p:10,e:"Bellsprout",n:["Knofensa","Ultrigaria","Sarzenia"]},
+ {t:5,p:10,e:"Horsea",n:["Seeper","Seemon","Seedraking"]},
+ {t:5,p:10,e:"Natu",n:["Natu","Xatu"]},
+ {t:5,p:10,e:"Hoppip",n:["Hoppspross","Hubelupf","Papungha"]},
+ {t:5,p:10,e:"Teddiursa",n:["Teddiursa","Ursaring"]},
+ {t:5,p:10,e:"Wurmple",n:["Waumpel","Schaloko","Papinella","Panekon","Pudox"]},
+ {t:5,p:10,e:"Taillow",n:["Schwalbini","Schwalboss"]},
+ {t:5,p:10,e:"Numel",n:["Camaub","Camerupt"]},
+ {t:5,p:10,e:"Swablu",n:["Wablu","Altaria"]},
+ {t:5,p:10,e:"Snorunt",n:["Schneppke","Firnontor","Frosdedje"]},
+ {t:5,p:10,e:"Starly",n:["Staralili","Staravia","Staraptor"]},
+ {t:5,p:10,e:"Hippopotas",n:["Hippopotas","Hippoterus"]},
+ {t:5,p:10,e:"Lillipup",n:["Yorkleff","Terribark","Bissbark"]},
+ {t:5,p:10,e:"Timburr",n:["Praktibalk","Strepoli","Meistagrif"]},
+ {t:5,p:10,e:"Throh",n:["Jiutesto"]},
+ {t:5,p:10,e:"Sawk",n:["Karadonis"]},
+ {t:5,p:10,e:"Venipede",n:["Toxiped","Fermicula","Cerapendra"]},
+ {t:5,p:10,e:"Cottonee",n:["Waumboll","Elfun"]},
+ {t:5,p:10,e:"Petilil",n:["Lilminip","Dressella"]},
+ {t:5,p:10,e:"Dwebble",n:["Lithomith","Castellith"]},
+ {t:5,p:10,e:"Trubbish",n:["Unratütom","Deponitox"]},
+ {t:5,p:10,e:"Karrablast",n:["Laukaps","Cavalanzas"]},
+ {t:5,p:10,e:"Foongus",n:["Tarnpignon","Hutsassa"]},
+ {t:5,p:10,e:"Joltik",n:["Wattzapf","Voltula"]},
+ {t:5,p:10,e:"Ferroseed",n:["Kastadur","Tentantel"]},
+ // TIER 6 — 5 pts
+ {t:6,p:5,e:"Pidgey",n:["Taubsi","Tauboga","Tauboss"]},
+ {t:6,p:5,e:"Spearow",n:["Habitak","Ibitak"]},
+ {t:6,p:5,e:"Ekans",n:["Rettan","Arbok"]},
+ {t:6,p:5,e:"Nidoran♀",n:["Nidoran♀","Nidorina","Nidoqueen"]},
+ {t:6,p:5,e:"Diglett",n:["Digda","Digdri"]},
+ {t:6,p:5,e:"Mankey",n:["Menki","Rasaff"]},
+ {t:6,p:5,e:"Abra",n:["Abra","Kadabra","Simsala"]},
+ {t:6,p:5,e:"Ponyta",n:["Ponita","Gallopa"]},
+ {t:6,p:5,e:"Doduo",n:["Dodu","Dodri"]},
+ {t:6,p:5,e:"Grimer",n:["Sleima","Sleimok"]},
+ {t:6,p:5,e:"Cubone",n:["Tragosso","Knogga"]},
+ {t:6,p:5,e:"Lickitung",n:["Schlurp","Schlurplek"]},
+ {t:6,p:5,e:"Tangela",n:["Tangela","Tangoloss"]},
+ {t:6,p:5,e:"Ditto",n:["Ditto"]},
+ {t:6,p:5,e:"Chinchou",n:["Lampi","Lanturn"]},
+ {t:6,p:5,e:"Mareep",n:["Voltilamm","Waaty","Ampharos"]},
+ {t:6,p:5,e:"Slugma",n:["Schneckmag","Magcargo"]},
+ {t:6,p:5,e:"Phanpy",n:["Phanpy","Donphan"]},
+ {t:6,p:5,e:"Stantler",n:["Damhirplex"]},
+ {t:6,p:5,e:"Poochyena",n:["Fiffyen","Magnayen"]},
+ {t:6,p:5,e:"Zigzagoon",n:["Zigzachs","Geradaks"]},
+ {t:6,p:5,e:"Wingull",n:["Wingull","Pelipper"]},
+ {t:6,p:5,e:"Whismur",n:["Flurmel","Krakeelo","Krawumms"]},
+ {t:6,p:5,e:"Makuhita",n:["Makuhita","Hariyama"]},
+ {t:6,p:5,e:"Sableye",n:["Zobiris"]},
+ {t:6,p:5,e:"Mawile",n:["Flunkifer"]},
+ {t:6,p:5,e:"Aron",n:["Stollunior","Stollrak","Stolloss"]},
+ {t:6,p:5,e:"Electrike",n:["Frizelbliz","Voltenso"]},
+ {t:6,p:5,e:"Roselia",n:["Roselia","Roserade","Knospi"]},
+ {t:6,p:5,e:"Spoink",n:["Spoink","Groink"]},
+ {t:6,p:5,e:"Solrock",n:["Sonnfel"]},
+ // TIER 7 — 3 pts
+ {t:7,p:3,e:"Rattata",n:["Rattfratz","Rattikarl"]},
+ {t:7,p:3,e:"Sandshrew",n:["Sandan","Sandamer"]},
+ {t:7,p:3,e:"Zubat",n:["Zubat","Golbat","Iksbat"]},
+ {t:7,p:3,e:"Psyduck",n:["Enton","Entoron"]},
+ {t:7,p:3,e:"Poliwag",n:["Quapsel","Quaputzi","Quappo","Quaxo"]},
+ {t:7,p:3,e:"Machop",n:["Machollo","Maschock","Machomei"]},
+ {t:7,p:3,e:"Tentacool",n:["Tentacha","Tentoxa"]},
+ {t:7,p:3,e:"Geodude",n:["Kleinstein","Georok","Geowaz"]},
+ {t:7,p:3,e:"Slowpoke",n:["Flegmon","Lahmus","Laschoking"]},
+ {t:7,p:3,e:"Magnemite",n:["Magnetilo","Magneton","Magnezone"]},
+ {t:7,p:3,e:"Seel",n:["Jurob","Jugong"]},
+ {t:7,p:3,e:"Gastly",n:["Nebulak","Alpollo","Gengar"]},
+ {t:7,p:3,e:"Onix",n:["Onix","Stahlos"]},
+ {t:7,p:3,e:"Krabby",n:["Krabby","Kingler"]},
+ {t:7,p:3,e:"Voltorb",n:["Voltobal","Lepumentas"]},
+ {t:7,p:3,e:"Koffing",n:["Smogon","Smogmog"]},
+ {t:7,p:3,e:"Rhyhorn",n:["Rihorn","Rizeros","Rihornior"]},
+ {t:7,p:3,e:"Goldeen",n:["Goldini","Golking"]},
+ {t:7,p:3,e:"Magikarp",n:["Karpador","Garados"]},
+ {t:7,p:3,e:"Marill",n:["Marill","Azumarill","Azurill"]},
+ {t:7,p:3,e:"Unown",n:["Icognito"]},
+ {t:7,p:3,e:"Wobbuffet",n:["Woingenau","Isso"]},
+ {t:7,p:3,e:"Girafarig",n:["Girafarig"]},
+ {t:7,p:3,e:"Dunsparce",n:["Dummisel"]},
+ {t:7,p:3,e:"Swinub",n:["Quiekel","Keifel","Mamutel"]},
+ {t:7,p:3,e:"Smeargle",n:["Farbeagle"]},
+ {t:7,p:3,e:"Seedot",n:["Samurzel","Blanas","Tengulist"]},
+ {t:7,p:3,e:"Meditite",n:["Meditie","Meditalis"]},
+ {t:7,p:3,e:"Torkoal",n:["Qurtel"]},
+ {t:7,p:3,e:"Baltoy",n:["Puppance","Claydoll"]},
+ {t:7,p:3,e:"Shuppet",n:["Shuppet","Banette"]},
+ // ===== Nachtrag 2026: untere (abgeschnittene) Chart-Reihen =====
+ // TIER 3 — 30 pts
+ {t:3,p:30,e:"Chimecho",n:["Chimecho"]},
+ {t:3,p:30,e:"Luvdisc",n:["Luvdisc"]},
+ {t:3,p:30,e:"Drifloon",n:["Drifloon"]},
+ {t:3,p:30,e:"Stunky",n:["Stunky"]},
+ {t:3,p:30,e:"Chatot",n:["Chatot"]},
+ {t:3,p:30,e:"Gible",n:["Gible"]},
+ {t:3,p:30,e:"Croagunk",n:["Croagunk"]},
+ {t:3,p:30,e:"Finneon",n:["Finneon"]},
+ {t:3,p:30,e:"Darumaka",n:["Darumaka"]},
+ {t:3,p:30,e:"Maractus",n:["Maractus"]},
+ {t:3,p:30,e:"Sigilyph",n:["Sigilyph"]},
+ {t:3,p:30,e:"Cryogonal",n:["Cryogonal"]},
+ // TIER 5 — 10 pts
+ {t:5,p:10,e:"Tynamo",n:["Tynamo"]},
+ {t:5,p:10,e:"Cubchoo",n:["Cubchoo"]},
+ {t:5,p:10,e:"Shelmet",n:["Shelmet"]},
+ // TIER 6 — 5 pts
+ {t:6,p:5,e:"Clamperl",n:["Clamperl"]},
+ {t:6,p:5,e:"Bidoof",n:["Bidoof"]},
+ {t:6,p:5,e:"Shinx",n:["Shinx"]},
+ {t:6,p:5,e:"Snover",n:["Snover"]},
+ {t:6,p:5,e:"Patrat",n:["Patrat"]},
+ {t:6,p:5,e:"Munna",n:["Munna"]},
+ {t:6,p:5,e:"Blitzle",n:["Blitzle"]},
+ {t:6,p:5,e:"Roggenrola",n:["Roggenrola"]},
+ {t:6,p:5,e:"Woobat",n:["Woobat"]},
+ {t:6,p:5,e:"Tympole",n:["Tympole"]},
+ {t:6,p:5,e:"Sewaddle",n:["Sewaddle"]},
+ {t:6,p:5,e:"Minccino",n:["Minccino"]},
+ {t:6,p:5,e:"Gothita",n:["Gothita"]},
+ {t:6,p:5,e:"Solosis",n:["Solosis"]},
+ {t:6,p:5,e:"Vanillite",n:["Vanillite"]},
+ {t:6,p:5,e:"Klink",n:["Klink"]},
+ {t:6,p:5,e:"Elgyem",n:["Elgyem"]},
+ {t:6,p:5,e:"Stunfisk",n:["Stunfisk"]},
+ {t:6,p:5,e:"Druddigon",n:["Druddigon"]},
+ {t:6,p:5,e:"Vullaby",n:["Vullaby"]},
+ {t:6,p:5,e:"Durant",n:["Durant"]},
+ // TIER 7 — 3 pts
+ {t:7,p:3,e:"Duskull",n:["Duskull"]},
+ {t:7,p:3,e:"Spheal",n:["Spheal"]},
+ {t:7,p:3,e:"Buizel",n:["Buizel"]},
+ {t:7,p:3,e:"Shellos",n:["Shellos"]},
+ {t:7,p:3,e:"Glameow",n:["Glameow"]},
+ {t:7,p:3,e:"Bronzor",n:["Bronzor"]},
+ {t:7,p:3,e:"Basculin",n:["Basculin"]},
+ {t:7,p:3,e:"Sandile",n:["Sandile"]},
+ {t:7,p:3,e:"Yamask",n:["Yamask"]},
+ {t:7,p:3,e:"Deerling",n:["Deerling"]},
+ {t:7,p:3,e:"Frillish",n:["Frillish"]},
+ {t:7,p:3,e:"Litwick",n:["Litwick"]},
+ {t:7,p:3,e:"Mienfoo",n:["Mienfoo"]},
+ {t:7,p:3,e:"Golett",n:["Golett"]},
+];
+
+const TIER_COLORS=["--t0","--t1","--t2","--t3","--t4","--t5","--t6","--t7"]
+  .map(v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim());
+
+/* Normalisierung: klein, ohne Sonderzeichen/Akzente */
+const norm=s=>(s||"").toString().toLowerCase()
+  .replace(/♀/g,"f").replace(/♂/g,"m")
+  .replace(/ß/g,"ss")
+  .normalize("NFD").replace(/[̀-ͯ]/g,"")
+  .replace(/[^a-z0-9]/g,"");
+
+/* Englische Namen ALLER Entwicklungsstufen (Basis-EN -> alle EN-Namen der Linie).
+   Damit bekommt jede Weiterentwicklung dasselbe Tier wie die Erstentwicklung,
+   auch wenn (wie in hordes.json) englische Namen gespeichert sind. */
+const EN_LINES={
+ "Bulbasaur":["Ivysaur","Venusaur"],"Charmander":["Charmeleon","Charizard"],"Squirtle":["Wartortle","Blastoise"],
+ "Eevee":["Vaporeon","Jolteon","Flareon","Espeon","Umbreon","Leafeon","Glaceon"],"Porygon":["Porygon2","Porygon-Z"],
+ "Snorlax":["Munchlax"],"Chikorita":["Bayleef","Meganium"],"Cyndaquil":["Quilava","Typhlosion"],
+ "Totodile":["Croconaw","Feraligatr"],"Togepi":["Togetic","Togekiss"],"Tyrogue":["Hitmonlee","Hitmonchan","Hitmontop"],
+ "Treecko":["Grovyle","Sceptile"],"Torchic":["Combusken","Blaziken"],"Mudkip":["Marshtomp","Swampert"],
+ "Beldum":["Metang","Metagross"],"Turtwig":["Grotle","Torterra"],"Chimchar":["Monferno","Infernape"],
+ "Piplup":["Prinplup","Empoleon"],"Riolu":["Lucario"],"Snivy":["Servine","Serperior"],"Tepig":["Pignite","Emboar"],
+ "Oshawott":["Dewott","Samurott"],
+ "Chansey":["Happiny","Blissey"],"Scyther":["Scizor"],"Sudowoodo":["Bonsly"],"Shroomish":["Breloom"],
+ "Slakoth":["Vigoroth","Slaking"],"Skitty":["Delcatty"],"Gulpin":["Swalot"],"Burmy":["Wormadam","Mothim"],
+ "Combee":["Vespiquen"],"Cherubi":["Cherrim"],"Skorupi":["Drapion"],"Pansage":["Simisage"],"Pansear":["Simisear"],
+ "Panpour":["Simipour"],"Drilbur":["Excadrill"],"Ducklett":["Swanna"],"Larvesta":["Volcarona"],
+ "Clefairy":["Cleffa","Clefable"],"Shellder":["Cloyster"],"Mr. Mime":["Mime Jr."],"Omanyte":["Omastar"],
+ "Kabuto":["Kabutops"],"Aipom":["Ambipom"],"Pineco":["Forretress"],"Houndour":["Houndoom"],
+ "Ralts":["Kirlia","Gardevoir","Gallade"],"Nincada":["Ninjask"],"Lileep":["Cradily"],"Anorith":["Armaldo"],
+ "Feebas":["Milotic"],"Bagon":["Shelgon","Salamence"],"Cranidos":["Rampardos"],"Shieldon":["Bastiodon"],
+ "Tirtouga":["Carracosta"],"Archen":["Archeops"],"Zorua":["Zoroark"],"Pawniard":["Bisharp"],
+ "Vulpix":["Ninetales"],"Growlithe":["Arcanine"],"Exeggcute":["Exeggutor"],"Staryu":["Starmie"],
+ "Jynx":["Smoochum"],"Magmar":["Magby","Magmortar"],"Dratini":["Dragonair","Dragonite"],"Sentret":["Furret"],
+ "Ledyba":["Ledian"],"Sunkern":["Sunflora"],"Yanma":["Yanmega"],"Murkrow":["Honchkrow"],"Misdreavus":["Mismagius"],
+ "Gligar":["Gliscor"],"Remoraid":["Octillery"],"Mantine":["Mantyke"],"Nosepass":["Probopass"],
+ "Carvanha":["Sharpedo"],"Wailmer":["Wailord"],"Cacnea":["Cacturne"],"Barboach":["Whiscash"],
+ "Oddish":["Gloom","Vileplume","Bellossom"],"Venonat":["Venomoth"],"Meowth":["Persian"],"Drowzee":["Hypno"],
+ "Electabuzz":["Elekid","Electivire"],"Hoothoot":["Noctowl"],"Spinarak":["Ariados"],"Wooper":["Quagsire"],
+ "Snubbull":["Granbull"],"Sneasel":["Weavile"],"Larvitar":["Pupitar","Tyranitar"],"Lotad":["Lombre","Ludicolo"],
+ "Surskit":["Masquerain"],"Trapinch":["Vibrava","Flygon"],"Corphish":["Crawdaunt"],"Kricketot":["Kricketune"],
+ "Buneary":["Lopunny"],"Purrloin":["Liepard"],"Pidove":["Tranquill","Unfezant"],"Scraggy":["Scrafty"],
+ "Axew":["Fraxure","Haxorus"],"Rufflet":["Braviary"],"Deino":["Zweilous","Hydreigon"],
+ "Caterpie":["Metapod","Butterfree"],"Weedle":["Kakuna","Beedrill"],"Pikachu":["Pichu","Raichu"],
+ "Nidoran♂":["Nidorino","Nidoking"],"Jigglypuff":["Igglybuff","Wigglytuff"],"Paras":["Parasect"],
+ "Bellsprout":["Weepinbell","Victreebel"],"Horsea":["Seadra","Kingdra"],"Natu":["Xatu"],
+ "Hoppip":["Skiploom","Jumpluff"],"Teddiursa":["Ursaring"],"Wurmple":["Silcoon","Beautifly","Cascoon","Dustox"],
+ "Taillow":["Swellow"],"Numel":["Camerupt"],"Swablu":["Altaria"],"Snorunt":["Glalie","Froslass"],
+ "Starly":["Staravia","Staraptor"],"Hippopotas":["Hippowdon"],"Lillipup":["Herdier","Stoutland"],
+ "Timburr":["Gurdurr","Conkeldurr"],"Venipede":["Whirlipede","Scolipede"],"Cottonee":["Whimsicott"],
+ "Petilil":["Lilligant"],"Dwebble":["Crustle"],"Trubbish":["Garbodor"],"Karrablast":["Escavalier"],
+ "Foongus":["Amoonguss"],"Joltik":["Galvantula"],"Ferroseed":["Ferrothorn"],
+ "Pidgey":["Pidgeotto","Pidgeot"],"Spearow":["Fearow"],"Ekans":["Arbok"],"Nidoran♀":["Nidorina","Nidoqueen"],
+ "Diglett":["Dugtrio"],"Mankey":["Primeape"],"Abra":["Kadabra","Alakazam"],"Ponyta":["Rapidash"],
+ "Doduo":["Dodrio"],"Grimer":["Muk"],"Cubone":["Marowak"],"Lickitung":["Lickilicky"],"Tangela":["Tangrowth"],
+ "Chinchou":["Lanturn"],"Mareep":["Flaaffy","Ampharos"],"Slugma":["Magcargo"],"Phanpy":["Donphan"],
+ "Poochyena":["Mightyena"],"Zigzagoon":["Linoone"],"Wingull":["Pelipper"],"Whismur":["Loudred","Exploud"],
+ "Makuhita":["Hariyama"],"Aron":["Lairon","Aggron"],"Electrike":["Manectric"],"Roselia":["Budew","Roserade"],
+ "Spoink":["Grumpig"],
+ "Rattata":["Raticate"],"Sandshrew":["Sandslash"],"Zubat":["Golbat","Crobat"],"Psyduck":["Golduck"],
+ "Poliwag":["Poliwhirl","Poliwrath","Politoed"],"Machop":["Machoke","Machamp"],"Tentacool":["Tentacruel"],
+ "Geodude":["Graveler","Golem"],"Slowpoke":["Slowbro","Slowking"],"Magnemite":["Magneton","Magnezone"],
+ "Seel":["Dewgong"],"Gastly":["Haunter","Gengar"],"Onix":["Steelix"],"Krabby":["Kingler"],
+ "Voltorb":["Electrode"],"Koffing":["Weezing"],"Rhyhorn":["Rhydon","Rhyperior"],"Goldeen":["Seaking"],
+ "Magikarp":["Gyarados"],"Marill":["Azurill","Azumarill"],"Wobbuffet":["Wynaut"],"Swinub":["Piloswine","Mamoswine"],
+ "Seedot":["Nuzleaf","Shiftry"],"Meditite":["Medicham"],"Baltoy":["Claydol"],"Shuppet":["Banette"],
+ // --- Nachtrag 2026 (untere Chart-Reihen) ---
+ "Chimecho":["Chingling"],"Drifloon":["Drifblim"],"Stunky":["Skuntank"],"Gible":["Gabite","Garchomp"],
+ "Croagunk":["Toxicroak"],"Finneon":["Lumineon"],"Darumaka":["Darmanitan"],
+ "Tynamo":["Eelektrik","Eelektross"],"Cubchoo":["Beartic"],"Shelmet":["Accelgor"],
+ "Clamperl":["Huntail","Gorebyss"],"Bidoof":["Bibarel"],"Shinx":["Luxio","Luxray"],"Snover":["Abomasnow"],
+ "Patrat":["Watchog"],"Munna":["Musharna"],"Blitzle":["Zebstrika"],"Roggenrola":["Boldore","Gigalith"],
+ "Woobat":["Swoobat"],"Tympole":["Palpitoad","Seismitoad"],"Sewaddle":["Swadloon","Leavanny"],
+ "Minccino":["Cinccino"],"Gothita":["Gothorita","Gothitelle"],"Solosis":["Duosion","Reuniclus"],
+ "Vanillite":["Vanillish","Vanilluxe"],"Klink":["Klang","Klinklang"],"Elgyem":["Beheeyem"],"Vullaby":["Mandibuzz"],
+ "Duskull":["Dusclops","Dusknoir"],"Spheal":["Sealeo","Walrein"],"Buizel":["Floatzel"],"Shellos":["Gastrodon"],
+ "Glameow":["Purugly"],"Bronzor":["Bronzong"],"Sandile":["Krokorok","Krookodile"],"Yamask":["Cofagrigus"],
+ "Deerling":["Sawsbuck"],"Frillish":["Jellicent"],"Litwick":["Lampent","Chandelure"],"Mienfoo":["Mienshao"],
+ "Golett":["Golurk"]
+};
+
+/* Lookup: jeder deutsche Name + englischer Basisname + englische Weiterentwicklungen -> Linie */
+const LOOKUP={};
+for(const line of LINES){
+  for(const nm of line.n) LOOKUP[norm(nm)]=line;
+  LOOKUP[norm(line.e)]=line;
+  const evs=EN_LINES[line.e]; if(evs) for(const en of evs) LOOKUP[norm(en)]=line;
+}
+/* POKEDB: aus pokemon_data.json, dauerhaft gespeichert (einmal laden reicht)
+   PKMN_INDEX: norm(engl. Name) -> Dex-ID, einmalig von PokeAPI (für Bilder ohne Datei) */
+let POKEDB=loadPokedb();
+function loadPokedb(){try{return JSON.parse(localStorage.getItem("sw_pokedb")||"{}")}catch(e){return{}}}
+function savePokedb(){try{localStorage.setItem("sw_pokedb",JSON.stringify(POKEDB))}catch(e){}}
+let PKMN_INDEX=loadPkmnIndex();
+function loadPkmnIndex(){try{return JSON.parse(localStorage.getItem("sw_pkmn")||"{}")}catch(e){return{}}}
+function savePkmnIndex(){try{localStorage.setItem("sw_pkmn",JSON.stringify(PKMN_INDEX))}catch(e){}}
+function spriteUrlById(id){return "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/"+id+".png";}
+function cap(s){return s?s.charAt(0).toUpperCase()+s.slice(1):s;}
+
+function dexIdFor(name){
+  const rec=POKEDB[norm(name)]; if(rec&&rec.id) return rec.id;
+  if(PKMN_INDEX[norm(name)]) return PKMN_INDEX[norm(name)];
+  const l=LOOKUP[norm(name)];
+  if(l){ if(PKMN_INDEX[norm(l.e)]) return PKMN_INDEX[norm(l.e)];
+    const r2=POKEDB[norm(l.e)]||POKEDB[norm(l.n[0])]; if(r2&&r2.id) return r2.id; }
+  return null;
+}
+async function fetchPkmnIndex(){
+  if(Object.keys(PKMN_INDEX).length>50) return; // schon im Cache
+  try{
+    const r=await fetch("https://pokeapi.co/api/v2/pokemon?limit=100000");
+    const j=await r.json();
+    for(const e of j.results){ const m=e.url.match(/\/pokemon\/(\d+)\//); if(m) PKMN_INDEX[norm(e.name)]=Number(m[1]); }
+    savePkmnIndex(); if(typeof render==="function") render();
+  }catch(e){/* offline -> Bilder ggf. nur mit pokemon_data.json */}
+}
+
+function resolve(name){
+  let l=LOOKUP[norm(name)];
+  if(l) return l;
+  const rec=POKEDB[norm(name)];
+  if(rec){ l=LOOKUP[norm(rec.name_de)]||LOOKUP[norm(rec.name_en)]; if(l) return l; }
+  return null;
+}
+function spriteFor(name){
+  const rec=POKEDB[norm(name)]; if(rec&&rec.sprite) return rec.sprite;
+  const id=dexIdFor(name); if(id) return spriteUrlById(id);
+  return null;
+}
+/* Nur echte Pokémon zulassen (Tierlist ODER PokeAPI/POKEDB) */
+function isValidSpecies(name){const k=norm(name);return !!k&&!!(LOOKUP[k]||POKEDB[k]||PKMN_INDEX[k]);}
+function speciesLabels(name){
+  // Zeigt die SPEZIFISCHE Stufe (nicht die Basis). Deutschen Namen bevorzugt aus POKEDB.
+  const rec=POKEDB[norm(name)];
+  if(rec) return {de:rec.name_de?cap(rec.name_de):cap(name), en:rec.name_en?cap(rec.name_en):cap(name)};
+  return {de:cap(name), en:cap(name)};
+}
+function labelText(name){
+  const l=speciesLabels(name);
+  if(l.de&&l.en&&norm(l.de)!==norm(l.en)) return l.de+" · "+l.en;
+  return l.de||l.en||"";
+}
+function canonSpecies(name){const rec=POKEDB[norm(name)];if(rec&&rec.name_de)return cap(rec.name_de);return cap(name);}
+function memName(name){return speciesLabels(name).de||cap(name);}
+function icon(name,line,size){
+  const s=spriteFor(name);
+  if(s) return `<img class="spr${size==='sm'?' spr-sm':''}" src="${s}" alt="" loading="lazy">`;
+  const t=line?line.t:6;
+  const label=(line?line.n[0]:name||"?").slice(0,2).toUpperCase();
+  return `<span class="mono${size==='sm'?' spr-sm':''}" style="background:${TIER_COLORS[t]}">${label}</span>`;
+}
+function displayName(slug){
+  const l=resolve(slug);
+  if(l) return l.n[0];
+  // unbekannt: erste Buchstabe groß
+  return slug ? slug.charAt(0).toUpperCase()+slug.slice(1) : "?";
+}
+
+/* ============================================================
+   ORTE (PokeMMO) + AUTOCOMPLETE / VALIDIERUNG
+   ============================================================ */
+const REGIONS=["Kanto","Johto","Hoenn","Sinnoh","Unova"];
+const NAMED_LOCS=[
+  // Kanto
+  "Viridian Forest","Diglett's Cave","Mt. Moon","Rock Tunnel","Cerulean Cave","Victory Road","Safari Zone",
+  "Seafoam Islands","Power Plant","Pokémon Tower","Pattern Bush","Berry Forest","Icefall Cave","Lost Cave",
+  "Tanoby Ruins","Kindle Road","Bond Bridge","Mt. Ember","Treasure Beach","Cape Brink","Five Isle Meadow",
+  "Memorial Pillar","Water Path","Ruin Valley","Green Path","Outcast Island",
+  // Johto
+  "Sprout Tower","Ruins of Alph","Union Cave","Slowpoke Well","Ilex Forest","National Park","Burned Tower",
+  "Bell Tower","Whirl Islands","Mt. Mortar","Ice Path","Dark Cave","Dragon's Den","Cliff Cave","Cliff Edge Gate",
+  "Mt. Silver","Tohjo Falls","Lake of Rage","Tin Tower","Cianwood City",
+  // Hoenn
+  "Petalburg Woods","Rusturf Tunnel","Granite Cave","Fiery Path","Meteor Falls","Mt. Chimney","Jagged Pass",
+  "Cave of Origin","Shoal Cave","Seafloor Cavern","Sky Pillar","New Mauville","Mirage Tower","Sea Mauville",
+  "Scorched Slab","Sealed Chamber","Desert Ruins","Island Cave","Ancient Tomb","Safari Zone (Hoenn)",
+  // Sinnoh
+  "Oreburgh Gate","Oreburgh Mine","Ravaged Path","Floaroma Meadow","Eterna Forest","Old Chateau","Wayward Cave",
+  "Mt. Coronet","Great Marsh","Solaceon Ruins","Maniac Tunnel","Iron Island","Lake Verity","Lake Valor",
+  "Lake Acuity","Stark Mountain","Snowpoint Temple","Fuego Ironworks","Sendoff Spring","Trophy Garden",
+  "Ravaged Path","Valley Windworks","Turnback Cave","Honey Tree",
+  // Unova
+  "Pinwheel Forest","Wellspring Cave","Relic Castle","Desert Resort","Chargestone Cave","Mistralton Cave",
+  "Twist Mountain","Dragonspiral Tower","Giant Chasm","Challenger's Cave","Lostlorn Forest","Moor of Icirrus",
+  "Cold Storage","P2 Laboratory","Abundant Shrine","Celestial Tower","Relic Passage","Clay Tunnel","Seaside Cave",
+  // Städte & weitere Gebiete (aus Horden-Daten)
+  "Canyon Entrance","Celadon City","Cerulean City","Five Island","Four Island","Fuchsia City",
+  "Pokémon Mansion","Resort Gorgeous","Sevault Canyon","Three Isle Port","Viridian City","Water Labyrinth",
+  "Sootopolis City","Underwater","Artisan Cave","Desert Underpass","Magma Hideout","Mt. Pyre","Petalburg City",
+  "Driftveil City","Icirrus City","Dreamyard","Guidance Chamber","Dragonspiral Tower (Vorbereich)","Village Bridge",
+  "Celestic Town","Eterna City","Fuego Ironworks","Lost Tower","Ruin Maniac Cave","Twinleaf Town","Acuity Lakefront",
+  "Resort Area","Blackthorn City","Burned Tower","Cherrygrove City","Cianwood City","Ecruteak City","Lake of Rage",
+  "Mt. Silver Cave","New Bark Town","Olivine City","Team Rocket HQ","Violet City","Bell Tower","Berry Forest",
+  // Mechaniken
+  "Honey Tree","Headbutt-Baum","Dust Cloud / Staubwolke","Sweet Scent"
+];
+function buildLocList(){
+  const routes=[];
+  const add=(a,b)=>{for(let i=a;i<=b;i++)routes.push("Route "+i);};
+  add(1,28); add(29,48); add(101,134); add(201,230); // Kanto/Johto/Hoenn/Sinnoh (+Unova 1-23 ⊂ 1-28)
+  return [...new Set([...routes,...NAMED_LOCS])];
+}
+const LOC_LIST=buildLocList();
+const LOC_SET=new Set(LOC_LIST.map(norm));
+function isValidLocation(name){
+  const k=norm(name); if(!k) return false;
+  if(/^route\d+[a-z]?$/.test(k)) return true; // jede Route N
+  return LOC_SET.has(k);
+}
+let SPECIES_OPTIONS="", LOC_OPTIONS="";
+function buildSpeciesOptions(){
+  const set=new Set();
+  for(const l of LINES){ for(const nm of l.n) set.add(nm); set.add(l.e); }
+  for(const b in EN_LINES) EN_LINES[b].forEach(n=>set.add(n));
+  for(const k in POKEDB){ const r=POKEDB[k]; if(r.name_de)set.add(cap(r.name_de)); if(r.name_en)set.add(cap(r.name_en)); }
+  SPECIES_OPTIONS=[...set].sort().map(n=>`<option value="${esc(n)}">`).join("");
+}
+function buildLocOptions(){ LOC_OPTIONS=LOC_LIST.map(n=>`<option value="${esc(n)}">`).join(""); }
+function ensureDatalists(){
+  let host=document.getElementById("datalists");
+  if(!host){host=document.createElement("div");host.id="datalists";document.body.appendChild(host);}
+  host.innerHTML=`<datalist id="specList">${SPECIES_OPTIONS}</datalist>`+
+    `<datalist id="locList">${LOC_OPTIONS}</datalist>`+
+    `<datalist id="regionList">${REGIONS.map(r=>`<option value="${r}">`).join("")}</datalist>`;
+}
+function onSpecInput(el){
+  const row=el.closest(".edrow"); if(!row) return;
+  const name=el.value.trim();
+  const prev=row.querySelector(".em_prev"), enl=row.querySelector(".em_en");
+  if(!name){ el.classList.remove("bad","good"); prev.innerHTML=""; enl.textContent=""; return; }
+  if(isValidSpecies(name)){
+    el.classList.remove("bad"); el.classList.add("good");
+    const line=resolve(name);
+    prev.innerHTML=icon(name,line,'sm');
+    enl.textContent=labelText(name);
+    enl.className="em_en ktag";
+  }else{
+    el.classList.add("bad"); el.classList.remove("good");
+    prev.innerHTML='<span class="mono spr-sm" style="background:#5c6b7a">?</span>';
+    enl.textContent="✗ kein Pokémon"; enl.className="em_en ktag bad-txt";
+  }
+}
+function onLocInput(el){
+  const v=el.value.trim();
+  el.classList.toggle("bad", v!=="" && !isValidLocation(v));
+}
+
+/* ============================================================
+   DATEN
+   ============================================================ */
+const DEMO={
+  "active":{"bidifas":[1402701261584859299],"bisasam":[1243227226262999044],
+    "evoli":[1243227226262999044,591530514788384778,447805984069386250],
+    "schiggy":[1243227226262999044],
+    "glumanda":[295643411958988801,262638699286757376,591530514788384778],
+    "metagross":[242402037076197377],"ignivor":[503571780926046218,262638699286757376],
+    "sichlor":[503571780926046218],"hydropi":[424701511596245002],"plinfa":[424701511596245002],
+    "rameidon":[424701511596245002],
+    "knilz":[1165303341753053375,467454539507695618,295643411958988801,262638699286757376],
+    "aerodactyl":[1165303341753053375,262638699286757376],"barschwa":[467454539507695618],
+    "karnimani":[295643411958988801],"panflam":[295643411958988801],"skaraborn":[262638699286757376],
+    "feurigel":[262638699286757376],"rotomurf":[262638699286757376],"pionskora":[262638699286757376],
+    "tanhel":[403705221542445056],"wadribie":[1402701261584859299],"relaxo":[591530514788384778],
+    "rotom":[591530514788384778]},
+  "caught":[{"pokemon":"trasla","user_id":503571780926046218,"date":"2026-07-17"}]
+};
+
+/* Admin-Modus: nur mit "nimda" in URL (Hash/Query/Pfad) -> Bearbeiten/Upload erlaubt, sonst nur Lesen */
+function checkAdmin(){return /nimda/i.test((location.hash||"")+(location.search||"")+(location.pathname||""));}
+let ADMIN=checkAdmin();
+function applyAdminUI(){
+  const lb=document.getElementById("loadbar"); if(lb) lb.style.display=ADMIN?"":"none";
+  const st=document.getElementById("status"); if(st) st.style.display=ADMIN?"":"none";
+  const ml=document.getElementById("modeline"); if(ml) ml.innerHTML=ADMIN
+    ? '<span class="badge" style="background:var(--good);color:#08120a">🔓 Admin-Modus — Bearbeiten & Upload aktiv</span>'
+    : '<span class="badge" style="background:var(--panel2);color:var(--muted);border:1px solid var(--border)">🔒 Nur-Lesen-Modus</span>';
+}
+/* #nimda live an-/abschalten, ohne Reload */
+window.addEventListener("hashchange",()=>{ const was=ADMIN; ADMIN=checkAdmin(); applyAdminUI(); if(was!==ADMIN){ toast(ADMIN?"🔓 Admin-Modus aktiv":"🔒 Nur-Lesen-Modus"); render(); } });
+function loadData(){try{const d=JSON.parse(localStorage.getItem("sw_data")||"null");return (d&&(d.active||d.caught))?d:DEMO;}catch(e){return DEMO;}}
+function saveData(){try{localStorage.setItem("sw_data",JSON.stringify(DATA));}catch(e){}}
+let DATA=loadData();
+let NAMES=loadNames();          // {user_id: "Name"}
+
+/* Saisons */
+const SEASONS=[["fruehling","🌸 Frühling"],["sommer","☀️ Sommer"],["herbst","🍂 Herbst"],["winter","❄️ Winter"]];
+const SEASON_COL={fruehling:"#7bd88f",sommer:"#ffd23f",herbst:"#ff9f45",winter:"#8fd3ff"};
+let SEASON=loadSeason();
+function loadSeason(){try{return localStorage.getItem("sw_season")||"fruehling"}catch(e){return"fruehling"}}
+function setSeason(s){if(ED&&document.getElementById("ed_loc"))ED.draft=readEditor();SEASON=s;try{localStorage.setItem("sw_season",s)}catch(e){}renderSeasonBar();render();}
+
+/* Tageszeit-Filter (analog zur Saison). Immer eine aktiv, Default Tag. */
+const TIMES=[["morgen","🌅 Morgen/Mittag"],["tag","☀️ Tag"],["nacht","🌙 Nacht"]];
+const TOD_EDIT=[["immer","Immer"],["morgen","🌅 Morgen/Mittag"],["tag","☀️ Tag"],["nacht","🌙 Nacht"]];
+let TOD=loadTod();
+function loadTod(){try{const v=localStorage.getItem("sw_tod");return (v==="morgen"||v==="tag"||v==="nacht")?v:"tag";}catch(e){return"tag"}}
+function setTod(v){if(ED&&document.getElementById("ed_loc"))ED.draft=readEditor();TOD=v;try{localStorage.setItem("sw_tod",v)}catch(e){}renderSeasonBar();render();}
+function todMatch(m){
+  const t=m.tod||"immer";
+  if(t==="immer") return true;
+  // "Tag"-Mons kommen auch morgens/mittags vor; nur explizit Morgen-/Nacht-Mons sind beschränkt
+  if(TOD==="morgen") return t==="morgen"||t==="tag";
+  return t===TOD;
+}
+function todIcon(t){return t==="morgen"?"🌅":t==="tag"?"☀️":t==="nacht"?"🌙":"";}
+/* Lure-Encounter (immer 5%), standardmäßig ausgeblendet bis der Suchende sie einblendet */
+let LURE_ON=loadLure();
+function loadLure(){try{return localStorage.getItem("sw_lure")==="1"}catch(e){return false}}
+function setLure(v){LURE_ON=!!v;try{localStorage.setItem("sw_lure",LURE_ON?"1":"0")}catch(e){}render();}
+
+/* Horden: manuell pflegbar, Prozent-Vorkommen je Saison
+   {id, loc, region, note, members:[{name, s:{fruehling,sommer,herbst,winter}}]} */
+let HORDES=loadHordes();
+function loadHordes(){try{return JSON.parse(localStorage.getItem("sw_hordes")||"[]")}catch(e){return[]}}
+function saveHordes(){try{localStorage.setItem("sw_hordes",JSON.stringify(HORDES))}catch(e){}}
+
+function loadNames(){try{return JSON.parse(localStorage.getItem("sw_names")||"{}")}catch(e){return{}}}
+function saveNames(){try{localStorage.setItem("sw_names",JSON.stringify(NAMES))}catch(e){}}
+function toast(msg,isErr){
+  const t=document.getElementById("toast");
+  t.textContent=msg; t.className="show"+(isErr?" err":"");
+  clearTimeout(window._tt); window._tt=setTimeout(()=>t.className=isErr?"err":"",2600);
+}
+
+function uname(id){
+  const s=String(id);
+  if(NAMES[s]) return NAMES[s];
+  return "User "+s.slice(0,4)+"…"+s.slice(-4);
+}
+
+/* ============================================================
+   BERECHNUNGEN
+   ============================================================ */
+function computeScores(){
+  // Chronologisch (nach Datum, dann Eingabereihenfolge), um "zuerst" korrekt zu bestimmen
+  const cs=(DATA.caught||[]).map((c,i)=>({c,i}))
+    .sort((a,b)=>{const da=a.c.date||"",db=b.c.date||"";return da<db?-1:da>db?1:a.i-b.i;});
+  const per={}, teamLines=new Set(), playerLines={}, unknown=new Set();
+  let teamBonusTotal=0;
+  for(const {c} of cs){
+    const id=String(c.user_id);
+    const line=resolve(c.pokemon);
+    if(!per[id]) per[id]={pts:0,bonusPts:0,catches:[]};
+    if(!line){ // nicht in Tierlist -> zählt nicht (0 Punkte, kein Bonus)
+      unknown.add(c.pokemon);
+      per[id].catches.push({name:displayName(c.pokemon),tier:null,pts:0,bonus:0,tag:"untiered",date:c.date});
+      continue;
+    }
+    const key=norm(line.e);                       // Identität der Entwicklungslinie
+    if(!playerLines[id]) playerLines[id]=new Set();
+    const isDup=playerLines[id].has(key);         // Spieler hat diese Linie schon
+    let pts,tag;
+    if(isDup){ if(c.alpha){pts=35;tag="alpha";} else {pts=1;tag="dup";} }
+    else { pts=line.p; tag="first"; }
+    const bonus = teamLines.has(key)?0:8;         // Team-Erstfang -> +8
+    teamLines.add(key); playerLines[id].add(key);
+    per[id].pts += pts+bonus;
+    per[id].bonusPts += bonus;
+    teamBonusTotal += bonus;
+    per[id].catches.push({name:memName(c.pokemon),tier:line.t,pts,bonus,tag,date:c.date,e:line.e});
+  }
+  const rows=Object.entries(per).map(([id,v])=>({id,...v}))
+    .sort((a,b)=>b.pts-a.pts || b.catches.length-a.catches.length);
+  // Competition ranking (Gleichstand -> höhere Position, Regel des Events)
+  let rank=0,prev=null,seen=0;
+  for(const r of rows){ seen++; if(r.pts!==prev){rank=seen;prev=r.pts;} r.rank=rank; }
+  return {rows,unknown:[...unknown],teamBonus:teamBonusTotal,uniqueLines:teamLines.size};
+}
+
+function activeList(){
+  // [{line|null, slug, hunters:[ids]}]
+  const out=[];
+  for(const [slug,ids] of Object.entries(DATA.active||{})){
+    out.push({slug,line:resolve(slug),hunters:ids.map(String)});
+  }
+  out.sort((a,b)=>{
+    const pa=a.line?a.line.p:-1, pb=b.line?b.line.p:-1;
+    return pb-pa || b.hunters.length-a.hunters.length;
+  });
+  return out;
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+const view=document.getElementById("view");
+let TAB="loc";
+function showTab(t){TAB=t;document.querySelectorAll(".tab").forEach(el=>el.classList.toggle("active",el.dataset.tab===t));renderSeasonBar();render();}
+
+function renderSeasonBar(){
+  const bar=document.getElementById("seasonbar");
+  const show=(TAB==="loc");
+  bar.style.display=show?"flex":"none";
+  if(!show){bar.innerHTML="";return;}
+  bar.innerHTML=`<span style="align-self:center;font-size:12px;color:var(--muted);margin-right:4px">Saison:</span>`+
+    SEASONS.map(([k,lab])=>`<div class="season ${SEASON===k?'active':''}" data-s="${k}" onclick="setSeason('${k}')">${lab}</div>`).join("")+
+    `<div style="flex-basis:100%;height:0"></div>`+
+    `<span style="align-self:center;font-size:12px;color:var(--muted);margin-right:4px">Zeit:</span>`+
+    TIMES.map(([k,lab])=>`<div class="season timechip ${TOD===k?'active':''}" data-t="${k}" onclick="setTod('${k}')">${lab}</div>`).join("");
+}
+
+function tierBadge(t){
+  if(t==null) return `<span class="ktag">— nicht in Tierlist</span>`;
+  return `<span class="badge" style="background:${TIER_COLORS[t]}">T${t}</span>`;
+}
+
+function render(){
+  if(TAB==="lb") return renderLeaderboard();
+  if(TAB==="hunt") return renderHunt();
+  if(TAB==="tier") return renderTierlist();
+  if(TAB==="loc") return renderLoc();
+  if(TAB==="names") return renderNames();
+}
+
+function catchChip(c){
+  const eff=c.pts+(c.bonus||0);
+  const badge = c.tier!=null?tierBadge(c.tier):'<span class="ktag">—</span>';
+  let t="";
+  if(c.tag==="dup") t=` <span class="ktag">Dup</span>`;
+  else if(c.tag==="alpha") t=` <span style="color:var(--accent)">α Alpha</span>`;
+  else if(c.tag==="untiered") t=` <span class="ktag">0</span>`;
+  if(c.bonus) t+=` <span style="color:var(--good)">🆕+8</span>`;
+  return `<span class="chip"><span class="spwrap">${icon(c.name,c.tier!=null?{t:c.tier,n:[c.name],e:c.e}:null,'sm')} ${badge} ${c.name} <b>+${eff}</b>${t}</span></span>`;
+}
+function renderLeaderboard(){
+  const {rows,unknown,teamBonus,uniqueLines}=computeScores();
+  const total=rows.reduce((s,r)=>s+r.pts,0);
+  let h=`<div class="card">
+    <h2>🏆 Punkte-Leaderboard</h2>
+    <p class="hint">Team-Gesamt: <b style="color:var(--accent)">${total} pts</b> · ${rows.length} Spieler · ${(DATA.caught||[]).length} Shinys · ${uniqueLines} Linien · Unique-Bonus ${teamBonus} pts. Gleichstand = höhere Position.</p>
+    <p class="hint" style="margin-top:-6px">Regeln: Erst-Fang einer Linie = volle Tier-Punkte. Team-Erstfang der Linie: <span style="color:var(--good)">+8</span>. Weiterer Fang derselben Linie durch <b>denselben</b> Spieler: nur <span class="ktag">+1</span> (Shiny-Alpha: <span style="color:var(--accent)">+35</span>).</p>`;
+  if(!rows.length){ h+=`<div class="empty">Noch keine gefangenen Shinys in den Daten.</div></div>`; view.innerHTML=h; return; }
+  h+=`<table><thead><tr><th>#</th><th>Spieler</th><th>Fänge</th><th style="text-align:right">Punkte</th></tr></thead><tbody>`;
+  for(const r of rows){
+    const g=r.rank<=3?`g${r.rank}`:"";
+    const chips=r.catches.map(catchChip).join(" ");
+    h+=`<tr>
+      <td class="rank ${g}">${r.rank===1?"🥇":r.rank===2?"🥈":r.rank===3?"🥉":r.rank}</td>
+      <td><b>${uname(r.id)}</b>${r.bonusPts?`<br><span class="ktag">inkl. +${r.bonusPts} Bonus</span>`:""}</td>
+      <td>${chips||'<span class="ktag">—</span>'}</td>
+      <td class="pts">${r.pts}</td></tr>`;
+  }
+  h+=`</tbody></table>`;
+  if(unknown.length) h+=`<p class="hint" style="margin-top:12px">⚠ Nicht in Tierlist (0 Punkte): ${unknown.map(u=>`<code>${u}</code>`).join(" ")}</p>`;
+  h+=`</div>`;
+  view.innerHTML=h;
+}
+
+function renderHunt(){
+  const list=activeList();
+  const dups=list.filter(x=>x.hunters.length>1);
+  let h=`<div class="card">
+    <h2>🎯 Wer huntet was</h2>
+    <p class="hint">Aktuelle Hunts aus dem Bot. <span class="dup">Gelb = Doppel-Hunt</span> (mehrere jagen dasselbe → ggf. aufteilen).
+      ${dups.length} Doppel-Hunts von ${list.length} Species.</p>
+    <table><thead><tr><th>Species</th><th>Tier</th><th>Pkt</th><th>Hunter</th></tr></thead><tbody>`;
+  for(const x of list){
+    const dup=x.hunters.length>1;
+    const hunters=x.hunters.map(id=>`<span class="chip">${uname(id)}</span>`).join(" ");
+    h+=`<tr class="${dup?'warnrow':''}">
+      <td><span class="spwrap">${icon(x.slug,x.line)} <b>${x.line?x.line.n[0]:displayName(x.slug)}</b> ${x.line?`<span class="ktag">${x.line.e}</span>`:""}</span></td>
+      <td>${x.line?tierBadge(x.line.t):tierBadge(null)}</td>
+      <td class="pts" style="text-align:left">${x.line?x.line.p:"—"}</td>
+      <td>${hunters} ${dup?`<span class="dup">×${x.hunters.length} ⚠</span>`:""}</td></tr>`;
+  }
+  h+=`</tbody></table></div>`;
+  view.innerHTML=h;
+}
+
+/* ---------- Horden-Helfer ---------- */
+function esc(s){return (s==null?"":String(s)).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function seasonLabel(){return (SEASONS.find(x=>x[0]===SEASON)||["","?"])[1];}
+function hordeSize(hd){return hd.size===3?3:5;} // Kompatibilität (alte Daten)
+/* Encounter-Methoden: [key, Label, max. Encounter/Stunde] */
+const METHODS=[["horde5","🐾 5er-Horde",1200],["horde3","🐾 3er-Horde",720],["angeln","🎣 Angeln",450],["single","👤 Single",250]];
+function methodOf(hd){return hd.method||(hd.size===3?"horde3":"horde5");} // Fallback aus alter size
+function methodInfo(k){return METHODS.find(m=>m[0]===k)||METHODS[0];}
+function methodBadge(hd){const k=methodOf(hd);return `<span class="badge meth-${k}">${methodInfo(k)[1]}</span>`;}
+function methodHasLure(k){return k==="single"||k==="angeln";} // Lure nur bei Single & Angeln
+/* kleiner roter Trank als Lure-Icon */
+const LURE_ICON='<svg width="12" height="14" viewBox="0 0 20 24" style="vertical-align:-2px"><rect x="7" y="0" width="6" height="3" rx="1" fill="#b5651d"/><rect x="8.3" y="2.5" width="3.4" height="6" fill="#9fb8cc"/><path d="M8 8h4l3.4 6.6A5.9 5.9 0 1 1 4.6 14.6z" fill="#e23b3b" stroke="#9e1c1c" stroke-width="0.7"/><circle cx="8.3" cy="15" r="1.3" fill="#fff" opacity="0.45"/></svg>';
+/* Untergrund / Habitat je Horde */
+const HABITATS=[["","— Untergrund —"],["gras","🌿 Gras"],["dunkelgras","🌲 Dunkelgras"],["wasser","💧 Wasser"],["hoehle","⛰️ Höhle"]];
+const HAB_COL={gras:"#5fd07a",dunkelgras:"#2f7d3f",wasser:"#4aa3ff",hoehle:"#b0895a"};
+function habLabel(k){const e=HABITATS.find(x=>x[0]===k);return e?e[1]:"";}
+function habStyle(hd){const c=HAB_COL[hd&&hd.hab];return c?`border-color:${c};box-shadow:inset 5px 0 0 ${c}`:"";}
+function habBadge(hd){const k=hd&&hd.hab,c=HAB_COL[k];return c?`<span class="badge" style="background:${c};color:#10141c">${habLabel(k)}</span>`:"";}
+function levelBadge(hd){return hd&&hd.level?`<span class="badge" style="background:var(--panel2);color:var(--text);border:1px solid var(--border)">🪜 ${esc(hd.level)}</span>`:"";}
+function habSelect(id,cur){return `<select class="hab-sel" onchange="setHordeHab('${id}',this.value)">${HABITATS.map(([k,l])=>`<option value="${k}"${(cur||"")===k?" selected":""}>${l}</option>`).join("")}</select>`;}
+function setHordeHab(id,v){const hd=HORDES.find(h=>h.id===id);if(hd){hd.hab=v||"";saveHordes();render();}}
+
+function encRate(hd){return methodInfo(methodOf(hd))[2];} // max. Encounter/Stunde je Methode
+function rating(hd){return encRate(hd)*effExpValue(hd);}  // Bewertung = Enc/h × effektiver Ø-Wert (inkl. Unique-Bonus)
+function fmtNum(n){return Math.round(n).toLocaleString("de-DE");}
+function pctOf(m){const v=m.s?m.s[SEASON]:0;return Number(v)||0;}
+/* effektiver %-Wert: Lure-Mons fix 5% (nur wenn eingeblendet), sonst Saison × Tageszeit */
+function activePct(m){
+  if(m.lure) return LURE_ON?5:0;
+  return todMatch(m)?pctOf(m):0;
+}
+function expValue(hd){return (hd.members||[]).reduce((s,m)=>{const l=resolve(m.name);return s+(activePct(m)/100)*(l?l.p:0);},0);}
+
+/* Entwicklungslinien, die das Team bereits gefangen hat (aus caught) */
+let CAUGHT_LINES=new Set();
+function refreshCaughtLines(){
+  CAUGHT_LINES=new Set();
+  for(const c of (DATA.caught||[])){ const l=resolve(c.pokemon); if(l) CAUGHT_LINES.add(norm(l.e)); }
+}
+function teamHasLine(name){ const l=resolve(name); return l?CAUGHT_LINES.has(norm(l.e)):false; }
+/* Effektiver Punktwert einer Species: Tier-Wert + 8 Unique-Bonus, falls Team-Linie noch offen */
+function effPoints(name){ const l=resolve(name); if(!l) return 0; return l.p + (CAUGHT_LINES.has(norm(l.e))?0:8); }
+function effExpValue(hd){ return (hd.members||[]).reduce((s,m)=>s+(activePct(m)/100)*effPoints(m.name),0); }
+
+let ED=null; // Editor-Status: null=zu, sonst {id, draft}
+let SEARCH="";  // Pokémon-Suche (filtert Horden)
+let LSEARCH=""; // Orts-/Region-Suche
+function hordeLocKey(hd){return norm(hd.loc||"")+"|"+norm(hd.region||"");}
+function setLocSearch(v){LSEARCH=v;applyHordeFilter();}
+function clearAllSearch(){SEARCH="";LSEARCH="";render();}
+
+/* Alle Such-Tokens einer Species: Name, DE, EN + ganze Entwicklungslinie */
+function specTokens(name){
+  const set=new Set(); const add=s=>{const k=norm(s);if(k)set.add(k);};
+  add(name); const lab=speciesLabels(name); add(lab.de); add(lab.en);
+  const l=resolve(name); if(l){ add(l.e); l.n.forEach(add); const ev=EN_LINES[l.e]; if(ev) ev.forEach(add); }
+  return [...set];
+}
+function hordeSpec(hd){
+  const set=new Set();
+  (hd.members||[]).filter(m=>activePct(m)>0).forEach(m=>specTokens(m.name).forEach(t=>set.add(t)));
+  return "|"+[...set].join("|")+"|";
+}
+function searchBarHTML(){
+  return `<div class="bar" style="justify-content:flex-start;margin:0 0 12px">
+    <input id="hordeSearch" list="specList" class="name-input" style="width:200px" placeholder="🔎 Pokémon…" value="${esc(SEARCH)}" oninput="setHordeSearch(this.value)" onchange="commitSearch(this.value)">
+    <input id="locSearch" list="locList" class="name-input" style="width:200px" placeholder="🗺️ Ort / Region…" value="${esc(LSEARCH)}" oninput="setLocSearch(this.value)">
+    <label class="lure-lbl" title="Lure-Encounter (5%) einblenden" style="align-self:center"><input type="checkbox" ${LURE_ON?"checked":""} onchange="setLure(this.checked)"> ${LURE_ICON} Lure anzeigen</label>
+    ${(SEARCH||LSEARCH)?`<button class="btn" onclick="clearAllSearch()">✕ Filter löschen</button>`:""}
+    <span class="ktag" id="hordeCount"></span>
+  </div>`;
+}
+function setHordeSearch(v){SEARCH=v;applyHordeFilter();}
+function clearHordeSearch(){SEARCH="";render();}
+/* passt ein Member (inkl. Entwicklungslinie) zur Suchanfrage? */
+function memberMatchesQuery(m,q){ return ("|"+specTokens(m.name).join("|")+"|").includes(q); }
+/* beste Saison+Tageszeit finden, in der das gesuchte Pokémon in der höchstbewerteten Horde vorkommt */
+function findBestFilters(query){
+  const q=norm(query); if(!q) return null;
+  const sS=SEASON, sT=TOD; let best=null;
+  for(const [s] of SEASONS){ for(const [t] of TIMES){
+    SEASON=s; TOD=t;
+    for(const hd of HORDES){
+      if(!(hd.members||[]).some(m=>activePct(m)>0 && memberMatchesQuery(m,q))) continue;
+      const r=rating(hd);
+      if(!best || r>best.rating) best={season:s,tod:t,rating:r};
+    }
+  }}
+  SEASON=sS; TOD=sT; return best;
+}
+function commitSearch(v){
+  SEARCH=v; const q=norm(v);
+  if(q){
+    const best=findBestFilters(v);
+    if(best){
+      SEASON=best.season; TOD=best.tod;
+      try{localStorage.setItem("sw_season",SEASON);localStorage.setItem("sw_tod",TOD);}catch(e){}
+      renderSeasonBar(); render();
+      toast("🔎 Beste Kombi: "+seasonLabel()+" · "+(TIMES.find(x=>x[0]===TOD)||["",""])[1]);
+      return;
+    }
+  }
+  applyHordeFilter();
+}
+function applyHordeFilter(){
+  const q=norm(SEARCH), lq=norm(LSEARCH), cnt=document.getElementById("hordeCount");
+  let vis=0,total=0;
+  document.querySelectorAll("#view .hcard").forEach(c=>{
+    total++;
+    const okS=!q||(c.dataset.spec||"").includes(q);
+    const okL=!lq||(c.dataset.loc||"").includes(lq);
+    const show=okS&&okL;
+    c.style.display=show?"":"none"; if(show)vis++;
+  });
+  if(cnt) cnt.textContent = (q||lq) ? (vis+" Fundort"+(vis===1?"":"e")) : (total+" Horden");
+}
+
+function renderLoc(){
+  let h=`<div class="card">
+    <h2>🗺️ Horden${ADMIN?"-Verwaltung":""}</h2>
+    <p class="hint">%-Vorkommen für <b>${seasonLabel()}</b> (oben umschalten), sortiert nach Bewertung. Die <b>Bewertung</b> enthält den Unique-Bonus (+8) für Linien, die das Team laut <code>hunts.json</code> noch nicht hat (🆕).${ADMIN?" Änderungen werden lokal gespeichert; Export teilt eine gemeinsame <code>hordes.json</code>.":""}</p>
+    ${ADMIN?`<div class="bar" style="justify-content:flex-start;margin:0 0 8px">
+      <button class="btn primary" onclick="openNewHorde()">+ Neue Horde</button>
+      <button class="btn" onclick="document.getElementById('hordefile').click()">⬆ Import</button>
+      <input type="file" id="hordefile" accept=".json" style="display:none" onchange="importHordes(this)">
+      <button class="btn" onclick="exportHordes()">⬇ Export</button>
+      ${HORDES.length?"":'<button class="btn" onclick="seedExampleHorde()">Beispiel einfügen</button>'}
+    </div>`:""}`;
+  if(ADMIN && ED && !ED.id) h+=hordeEditorHTML(); // neue Horde: Editor oben
+  if(HORDES.length) h+=searchBarHTML();
+  if(!HORDES.length && !(ADMIN&&ED)) h+=`<div class="empty">Noch keine Horden vorhanden.${ADMIN?'<br>Klick „+ Neue Horde" — oder „Beispiel einfügen", um das Format zu sehen.':' Ein Admin muss sie anlegen bzw. importieren.'}</div>`;
+  const sorted=[...HORDES].sort((a,b)=>rating(b)-rating(a));
+  for(const hd of sorted){
+    if(ADMIN && ED && ED.id===hd.id) h+=hordeEditorHTML(); // Editor an Ort der bearbeiteten Kachel
+    else h+=renderHordeCard(hd,ADMIN);
+  }
+  h+=`</div>`;
+  view.innerHTML=h;
+  applyHordeFilter();
+  if(ADMIN && ED && ED.id){ const e=document.getElementById("hordeEditor"); if(e) e.scrollIntoView({block:"nearest"}); }
+}
+
+function renderHordeCard(hd,edit){
+  const totalMembers=(hd.members||[]).length;
+  const mem=(hd.members||[]).map(m=>({...m,pct:activePct(m)})).filter(m=>m.pct>0).sort((a,b)=>b.pct-a.pct);
+  const ev=effExpValue(hd);
+  let h=`<div class="hcard" data-spec="${esc(hordeSpec(hd))}" data-loc="${esc(hordeLocKey(hd))}" style="${habStyle(hd)}">
+    <h3>📍 ${esc(hd.loc||"—")} ${hd.region?`<span class="ktag">${esc(hd.region)}</span>`:""} ${methodBadge(hd)} ${habBadge(hd)} ${levelBadge(hd)}
+      ${edit?`<span class="hactions">
+        ${habSelect(hd.id,hd.hab)}
+        <button class="btn" style="padding:4px 9px;font-size:12px" onclick="duplicateHorde('${hd.id}')" title="Kachel für weitere Ebene duplizieren">⧉ Splitten</button>
+        <button class="btn" style="padding:4px 9px;font-size:12px" onclick="openEditHorde('${hd.id}')">✎ Bearbeiten</button>
+        <button class="btn" style="padding:4px 9px;font-size:12px" onclick="deleteHorde('${hd.id}')">🗑</button></span>`:""}</h3>`;
+  if(hd.note) h+=`<p class="loc-note">${esc(hd.note)}</p>`;
+  if(!mem.length) h+=`<p class="loc-note">${totalMembers?`Keine Vorkommen (${seasonLabel()} · ${(TIMES.find(x=>x[0]===TOD)||["",""])[1]}).`:"Keine Species eingetragen."}</p>`;
+  for(const m of mem){
+    const line=resolve(m.name);
+    const col=line?TIER_COLORS[line.t]:"#5c6b7a";
+    const open=line&&!CAUGHT_LINES.has(norm(line.e));
+    const mark=line?(open?'<span style="color:var(--good)">🆕 +8</span>':'<span class="ktag">✓ Team</span>'):'';
+    const val=line?effPoints(m.name):0;
+    const tmark=m.tod&&m.tod!=="immer"?`<span class="ktag">${todIcon(m.tod)}</span>`:"";
+    const luremark=(m.lure&&methodHasLure(methodOf(hd)))?`<span title="Nur mit Lure (Köder)" style="margin-left:2px">${LURE_ICON}</span>`:"";
+    h+=`<div class="mrow">
+      <div class="mname">${icon(m.name,line,'sm')} ${esc(memName(m.name))} ${tmark} ${line?tierBadge(line.t):'<span class="ktag">?</span>'} ${luremark} ${mark}</div>
+      <div class="mtrack"><div class="mfill" style="width:${Math.min(100,m.pct)}%;background:${col}">${line?val+"p":""}</div></div>
+      <div class="mpct">${m.pct}%</div>
+    </div>`;
+  }
+  const rate=encRate(hd);
+  const newLines=(hd.members||[]).filter(m=>{const l=resolve(m.name);return activePct(m)>0&&l&&!CAUGHT_LINES.has(norm(l.e));}).length;
+  h+=`<p class="evexp">Ø Wert (${seasonLabel()}): <b>${ev.toFixed(1)} Pkt</b> pro Begegnung <span class="ktag">(Tier +8 für ${newLines} offene Linie${newLines===1?"":"n"})</span><br>
+    Bewertung: <b style="color:var(--good)">${fmtNum(rating(hd))}</b> <span class="ktag">= max. ${fmtNum(rate)} Enc./h × Ø-Wert</span></p></div>`;
+  return h;
+}
+
+function renderTierlist(){
+  const total=LINES.length, caught=LINES.filter(l=>CAUGHT_LINES.has(norm(l.e))).length;
+  let h=`<div class="card"><h2>📋 Tierlist</h2>
+    <p class="hint"><span style="color:var(--good)">✓</span> = vom Team gefangen (<b>${caught}/${total}</b> Linien). Klick auf ein offenes Pokémon → springt zu den Horden und zeigt die besten Fundorte.</p>`;
+  for(let t=0;t<8;t++){
+    const lines=LINES.filter(l=>l.t===t);
+    if(!lines.length) continue;
+    const col=TIER_COLORS[t], pts=lines[0].p;
+    const cc=lines.filter(l=>CAUGHT_LINES.has(norm(l.e))).length;
+    h+=`<div class="hcard" style="border-color:${col};box-shadow:inset 5px 0 0 ${col}">
+      <h3><span class="badge" style="background:${col};color:#10141c">Tier ${t}</span> <span style="color:${col};font-weight:700">${pts} Punkte</span> <span class="ktag">· ${cc}/${lines.length} gefangen</span></h3>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">`;
+    for(const l of lines.slice().sort((a,b)=>a.n[0].localeCompare(b.n[0]))){
+      if(CAUGHT_LINES.has(norm(l.e))){
+        h+=`<span class="chip tl-done" title="vom Team gefangen"><span class="spwrap"><span style="color:var(--good);font-weight:800">✓</span> ${icon(l.n[0],l,'sm')} <s>${esc(l.n[0])}</s></span></span>`;
+      }else{
+        h+=`<span class="chip tl-open" data-n="${esc(l.n[0])}" onclick="gotoHordeSearch(this.dataset.n)" title="Zu den Horden – beste Fundorte anzeigen"><span class="spwrap">${icon(l.n[0],l,'sm')} ${esc(l.n[0])} <span class="ktag">${esc(l.e)}</span></span></span>`;
+      }
+    }
+    h+=`</div></div>`;
+  }
+  h+=`</div>`;
+  view.innerHTML=h;
+}
+function gotoHordeSearch(name){
+  TAB="loc";
+  document.querySelectorAll(".tab").forEach(el=>el.classList.toggle("active",el.dataset.tab==="loc"));
+  renderSeasonBar();
+  commitSearch(name);
+}
+
+function renderSplit(){
+  if(!HORDES.length){
+    view.innerHTML=`<div class="card"><h2>📊 Spezies-Split</h2>
+      <p class="hint">Noch keine Horden angelegt. Wechsle zu „🗺️ Horden" und trag welche ein — hier siehst du dann die prozentuale Zusammensetzung je Saison.</p></div>`;
+    return;
+  }
+  const ranked=[...HORDES].map(hd=>({hd,ev:effExpValue(hd),rt:rating(hd)})).sort((a,b)=>b.rt-a.rt);
+  let h=`<div class="card"><h2>📊 Spezies-Split — ${seasonLabel()}</h2>
+    <p class="hint">Prozentuale Zusammensetzung jeder Horde in dieser Saison, sortiert nach Bewertung (Pkt/Std). Farbe = Tier.</p>`;
+  h+=searchBarHTML();
+  for(const {hd,ev,rt} of ranked){
+    const mem=(hd.members||[]).map(m=>({...m,pct:activePct(m),line:resolve(m.name)})).filter(m=>m.pct>0).sort((a,b)=>b.pct-a.pct);
+    h+=`<div class="hcard" data-spec="${esc(hordeSpec(hd))}" data-loc="${esc(hordeLocKey(hd))}" style="${habStyle(hd)}"><h3>📍 ${esc(hd.loc||"—")} ${hd.region?`<span class="ktag">${esc(hd.region)}</span>`:""} ${methodBadge(hd)} ${habBadge(hd)} ${levelBadge(hd)}
+      <span class="hactions evexp">Ø ${ev.toFixed(1)} · Bewertung <b style="color:var(--good)">${fmtNum(rt)}</b></span></h3>`;
+    if(!mem.length){ h+=`<p class="loc-note">Keine %-Werte für ${seasonLabel()}.</p></div>`; continue; }
+    const sum=mem.reduce((s,m)=>s+m.pct,0)||1;
+    h+=`<div class="stacked">`;
+    for(const m of mem){
+      const col=m.line?TIER_COLORS[m.line.t]:"#5c6b7a";
+      const w=m.pct/sum*100;
+      h+=`<div title="${esc(memName(m.name))} — ${m.pct}%" style="width:${w}%;background:${col}">${w>9?esc(memName(m.name)):""}</div>`;
+    }
+    h+=`</div><div class="legend" style="justify-content:flex-start">`+
+      mem.map(m=>`<span><span class="dot" style="background:${m.line?TIER_COLORS[m.line.t]:'#5c6b7a'}"></span>${esc(memName(m.name))} ${m.pct}%${m.line?` · T${m.line.t}·${m.line.p}p`:""}</span>`).join("")+
+      `</div></div>`;
+  }
+  h+=`</div>`;
+  view.innerHTML=h;
+  applyHordeFilter();
+}
+
+/* ---------- Editor ---------- */
+function hordeEditorHTML(){
+  const d=ED.draft;
+  let h=`<div class="editor" id="hordeEditor">
+    <div class="frow">
+      <input class="ed-loc${d.loc&&!isValidLocation(d.loc)?' bad':''}" id="ed_loc" list="locList" placeholder="Ort wählen (z.B. Route 119)…" value="${esc(d.loc)}" oninput="onLocInput(this)">
+      <input class="ed-region" id="ed_region" list="regionList" placeholder="Region" value="${esc(d.region)}">
+      <input id="ed_level" placeholder="Ebene (z.B. F1)" value="${esc(d.level||"")}" style="flex:0 0 110px;min-width:90px">
+      <select class="ed-size" id="ed_method" onchange="onMethodChange()">${METHODS.map(([k,l])=>`<option value="${k}"${methodOf(d)===k?" selected":""}>${l}</option>`).join("")}</select>
+      <select class="ed-size" id="ed_hab">${HABITATS.map(([k,l])=>`<option value="${k}"${(d.hab||"")===k?" selected":""}>${l}</option>`).join("")}</select>
+      <input class="ed-note" id="ed_note" placeholder="Notiz: Zeit, Sweet Scent…" value="${esc(d.note)}">
+    </div>
+    <div class="edhead">${SEASONS.map(([k,l])=>`<span class="seaslab">${l}</span>`).join("")}</div>
+    <div id="ed_members">${d.members.map((m,i)=>memberRowHTML(m,i)).join("")}</div>
+    <div class="bar" style="justify-content:flex-start;margin:8px 0 0">
+      <button class="btn" onclick="addMemberRow()">+ Species</button>
+      <button class="btn primary" onclick="saveHorde()">✓ Speichern</button>
+      <button class="btn" onclick="cancelHorde()">Abbrechen</button>
+      <span class="ktag" style="align-self:center">Pro Species %-Wert je Saison (0–100). Leer = 0.</span>
+    </div>
+  </div>`;
+  return h;
+}
+function memberRowHTML(m,i){
+  const s=m.s||{};
+  const has=!!m.name, valid=has?isValidSpecies(m.name):null;
+  const line=has?resolve(m.name):null;
+  const prev=has?(valid?icon(m.name,line,'sm'):'<span class="mono spr-sm" style="background:#5c6b7a">?</span>'):'';
+  const enTxt=valid?labelText(m.name):(valid===false?"✗ kein Pokémon":"");
+  return `<div class="edrow" data-i="${i}">
+    <span class="em_prev">${prev}</span>
+    <input class="em_name${valid===false?' bad':valid?' good':''}" list="specList" placeholder="Species (DE/EN)" value="${esc(m.name||"")}" oninput="onSpecInput(this)">
+    <span class="em_en ktag${valid===false?' bad-txt':''}">${esc(enTxt)}</span>
+    ${SEASONS.map(([k])=>`<input class="seasin em_${k}" type="number" min="0" max="100" placeholder="%" value="${s[k]!=null&&s[k]!==""?s[k]:""}">`).join("")}
+    <select class="tod-sel em_tod" title="Tageszeit">${TOD_EDIT.map(([k,l])=>`<option value="${k}"${(m.tod||"immer")===k?" selected":""}>${l}</option>`).join("")}</select>
+    ${(ED&&ED.draft&&methodHasLure(ED.draft.method))?`<label class="lure-lbl" title="Nur mit Köder/Lure"><input type="checkbox" class="em_lure" ${m.lure?"checked":""}> ${LURE_ICON} Lure</label>`:""}
+    <button class="xbtn" onclick="removeMemberRow(${i})" title="Entfernen">✕</button>
+  </div>`;
+}
+function readEditor(){
+  const g=id=>{const e=document.getElementById(id);return e?e.value.trim():"";};
+  const rows=[...document.querySelectorAll("#ed_members .edrow")];
+  const members=rows.map(r=>{
+    const s={};
+    SEASONS.forEach(([k])=>{const v=r.querySelector(".em_"+k).value;s[k]=v===""?0:Math.max(0,Math.min(100,Number(v)||0));});
+    const tsel=r.querySelector(".em_tod"), lb=r.querySelector(".em_lure");
+    return {name:r.querySelector(".em_name").value.trim(),s,tod:tsel?tsel.value:"immer",lure:lb?lb.checked:false};
+  });
+  return {loc:g("ed_loc"),region:g("ed_region"),level:g("ed_level"),note:g("ed_note"),method:g("ed_method"),hab:g("ed_hab"),members};
+}
+function openNewHorde(){ED={id:null,draft:{loc:"",region:"",level:"",note:"",method:"horde5",hab:"",members:[{name:"",s:{},tod:"immer",lure:false}]}};render();}
+function openEditHorde(id){const hd=HORDES.find(h=>h.id===id);if(!hd)return;
+  ED={id,draft:JSON.parse(JSON.stringify({loc:hd.loc||"",region:hd.region||"",level:hd.level||"",note:hd.note||"",method:methodOf(hd),hab:hd.hab||"",members:(hd.members&&hd.members.length?hd.members:[{name:"",s:{},tod:"immer",lure:false}])}))};render();}
+function cancelHorde(){ED=null;render();}
+function onMethodChange(){ED.draft=readEditor();render();}
+function addMemberRow(){ED.draft=readEditor();ED.draft.members.push({name:"",s:{},tod:"immer",lure:false});render();}
+function removeMemberRow(i){ED.draft=readEditor();ED.draft.members.splice(i,1);if(!ED.draft.members.length)ED.draft.members.push({name:"",s:{},tod:"immer",lure:false});render();}
+function saveHorde(){
+  const d=readEditor();
+  if(!d.loc){toast("Bitte einen Ort angeben",true);return;}
+  const named=d.members.filter(m=>m.name);
+  const bad=named.find(m=>!isValidSpecies(m.name));
+  if(bad){toast("Kein gültiges Pokémon: „"+bad.name+"“",true);return;}
+  d.members=named.map(m=>({name:canonSpecies(m.name),s:m.s,tod:m.tod||"immer",lure:!!m.lure}));
+  if(ED.id){const hd=HORDES.find(h=>h.id===ED.id);if(hd)Object.assign(hd,d);}
+  else HORDES.push({id:"h"+Date.now().toString(36)+Math.random().toString(36).slice(2,5),...d});
+  saveHordes(); ED=null; toast("✓ Horde gespeichert"); render();
+}
+function deleteHorde(id){const hd=HORDES.find(h=>h.id===id);if(!confirm("Horde \""+(hd?hd.loc:"")+"\" löschen?"))return;
+  HORDES=HORDES.filter(h=>h.id!==id);saveHordes();toast("Horde gelöscht");render();}
+function duplicateHorde(id){
+  const i=HORDES.findIndex(h=>h.id===id); if(i<0) return;
+  const copy=JSON.parse(JSON.stringify(HORDES[i]));
+  copy.id="h"+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+  HORDES.splice(i+1,0,copy);
+  saveHordes(); toast("Kachel dupliziert — jetzt für die andere Ebene anpassen"); render();
+}
+
+function exportHordes(){
+  const blob=new Blob([JSON.stringify({hordes:HORDES},null,2)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="hordes.json";
+  document.body.appendChild(a);a.click();a.remove();toast("⬇ hordes.json exportiert");
+}
+function importHordes(input){
+  const f=input.files[0];if(!f)return;input.value="";
+  const r=new FileReader();
+  r.onload=()=>{try{
+    const o=JSON.parse(r.result);
+    const arr=Array.isArray(o)?o:(o.hordes||[]);
+    if(!Array.isArray(arr))throw new Error("kein hordes-Array gefunden");
+    HORDES=arr.map(h=>({id:h.id||("h"+Date.now().toString(36)+Math.random().toString(36).slice(2,5)),
+      loc:h.loc||"",region:h.region||"",level:h.level||"",note:h.note||"",method:h.method||(h.size===3?"horde3":"horde5"),hab:h.hab||"",
+      members:(h.members||[]).map(m=>{
+        let s=m.s;
+        if((!s||!Object.keys(s).length) && m.p!=null){const v=Number(m.p)||0; s={fruehling:v,sommer:v,herbst:v,winter:v};}
+        return {name:m.name||"",s:s||{},tod:m.tod||"immer",lure:!!m.lure};
+      })}));
+    saveHordes();ED=null;toast("⬆ "+HORDES.length+" Horden importiert");render();
+  }catch(e){toast("✗ Import fehlgeschlagen: "+e.message,true);}};
+  r.readAsText(f);
+}
+function seedExampleHorde(){
+  HORDES.push({id:"h"+Date.now().toString(36),loc:"Beispiel: Route 119",region:"Hoenn",method:"horde5",hab:"gras",
+    note:"Sweet Scent — nur ein Format-Beispiel, bitte durch echte Event-Horden ersetzen",
+    members:[
+      {name:"Waumpel",s:{fruehling:60,sommer:60,herbst:40,winter:20}},
+      {name:"Schwalbini",s:{fruehling:20,sommer:20,herbst:20,winter:0}},
+      {name:"Gehweiher",s:{fruehling:20,sommer:20,herbst:40,winter:80}}
+    ]});
+  saveHordes();toast("Beispiel-Horde eingefügt");render();
+}
+
+function renderNames(){
+  // alle bekannten IDs sammeln
+  const ids=new Set();
+  Object.values(DATA.active||{}).forEach(arr=>arr.forEach(i=>ids.add(String(i))));
+  (DATA.caught||[]).forEach(c=>ids.add(String(c.user_id)));
+  let h=`<div class="card"><h2>👤 Spieler-Namen</h2>
+    <p class="hint">Der Bot speichert nur Discord-IDs.${ADMIN?" Ordne hier Namen zu — lokal gespeichert und überall angezeigt.":" (Bearbeiten nur im Admin-Modus.)"}</p>
+    <table><thead><tr><th>Discord-ID</th><th>Name</th></tr></thead><tbody>`;
+  for(const id of [...ids].sort()){
+    const cell = ADMIN
+      ? `<input class="name-input" value="${(NAMES[id]||'').replace(/"/g,'&quot;')}" placeholder="Name eingeben…" oninput="NAMES['${id}']=this.value.trim();saveNames()">`
+      : `${NAMES[id]?esc(NAMES[id]):'<span class="ktag">—</span>'}`;
+    h+=`<tr><td><code>${id}</code></td><td>${cell}</td></tr>`;
+  }
+  h+=`</tbody></table></div>`;
+  view.innerHTML=h;
+}
+
+/* ============================================================
+   LADEN
+   ============================================================ */
+let DB_LOADED=Object.keys(POKEDB).length>0;
+function isPokedb(obj){
+  if(!obj||typeof obj!=="object"||Array.isArray(obj)) return false;
+  const v=Object.values(obj)[0];
+  return v && typeof v==="object" && ("sprite" in v || "name_de" in v);
+}
+function applyPokedb(obj){
+  POKEDB={};
+  for(const [k,rec] of Object.entries(obj)){
+    POKEDB[norm(k)]=rec;
+    if(rec.name_de) POKEDB[norm(rec.name_de)]=rec;
+    if(rec.name_en) POKEDB[norm(rec.name_en)]=rec;
+  }
+  DB_LOADED=true;
+  savePokedb(); buildSpeciesOptions(); ensureDatalists();
+  render();
+}
+function applyData(obj){
+  DATA=obj; saveData();
+  if(obj.users && typeof obj.users==="object"){ Object.assign(NAMES,obj.users); saveNames(); }
+  refreshCaughtLines();
+  render();
+}
+function setStatus(msg,cls){
+  const s=document.getElementById("status");
+  const dbtag = DB_LOADED ? ' · <span style="color:var(--good)">🖼️ Voller Pokédex (DE+EN) aktiv</span>'
+                          : ' · <span class="ktag">Bilder via PokeAPI · pokemon_data.json laden für alle DE-Namen</span>';
+  s.innerHTML=msg+dbtag; s.className="status "+(cls||"");
+}
+function handleFile(f){
+  if(!ADMIN){ toast("Upload nur im Admin-Modus möglich",true); return; }
+  const r=new FileReader();
+  r.onload=()=>{ try{
+      const obj=JSON.parse(r.result);
+      if(isPokedb(obj)){
+        applyPokedb(obj);
+        setStatus("✓ "+f.name+" (Bilder) geladen","ok");
+        toast("🖼️ Bilder geladen: "+Object.keys(obj).length+" Einträge");
+      } else {
+        applyData(obj);
+        const na=Object.keys(obj.active||{}).length, nc=(obj.caught||[]).length;
+        setStatus("✓ "+f.name+" geladen","ok");
+        toast("✓ "+f.name+": "+na+" aktive Hunts · "+nc+" Shinys");
+      }
+    }catch(err){ setStatus("✗ Ungültiges JSON: "+err.message,"err"); toast("✗ Ungültiges JSON — ist das die richtige Datei?",true); } };
+  r.onerror=()=>{ toast("✗ Datei konnte nicht gelesen werden",true); };
+  r.readAsText(f);
+}
+document.getElementById("file").addEventListener("change",e=>{ if(e.target.files[0]) handleFile(e.target.files[0]); e.target.value=""; });
+document.getElementById("dbfile").addEventListener("change",e=>{ if(e.target.files[0]) handleFile(e.target.files[0]); e.target.value=""; });
+function loadFromUrl(){
+  const url=prompt("URL zur hunts.json oder pokemon_data.json (öffentlich/CORS-fähig):");
+  if(!url) return;
+  setStatus("Lade…");
+  fetch(url).then(r=>r.json()).then(j=>{
+    if(isPokedb(j)){ applyPokedb(j); setStatus("✓ Bilder von URL geladen","ok"); }
+    else { applyData(j); setStatus("✓ Von URL geladen","ok"); }
+  }).catch(e=>setStatus("✗ Fehler: "+e.message,"err"));
+}
+function useDemo(){ applyData(JSON.parse(JSON.stringify(DEMO))); setStatus("Beispieldaten geladen"); }
+
+/* Drag & Drop überall (mehrere Dateien möglich: hunts.json + pokemon_data.json) */
+document.addEventListener("dragover",e=>{e.preventDefault();});
+document.addEventListener("drop",e=>{
+  e.preventDefault();
+  const files=[...e.dataTransfer.files]; if(!files.length) return;
+  files.forEach(f=>handleFile(f));
+});
+
+buildSpeciesOptions();
+buildLocOptions();
+ensureDatalists();
+refreshCaughtLines();
+applyAdminUI();
+renderSeasonBar();
+render();
+fetchPkmnIndex(); // holt einmalig Dex-IDs von der PokeAPI für Bilder (danach gecacht)
+
+/* Nach-oben-Button: sichtbar ab 1,5 Bildschirmhöhen Scroll */
+(function(){
+  const b=document.getElementById("toTop");
+  const onScroll=()=>{ const y=window.scrollY||document.documentElement.scrollTop||0; b.classList.toggle("show", y>1.5*window.innerHeight); };
+  window.addEventListener("scroll",onScroll,{passive:true});
+  window.addEventListener("resize",onScroll);
+  onScroll();
+})();
+</script>
+</body>
+</html>

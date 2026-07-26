@@ -1,0 +1,15 @@
+# --- Secrets: NIEMALS committen! ---
+.env
+
+# --- Python ---
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# --- Live-Daten (wird vom Bot laufend erzeugt/aktualisiert) ---
+hunts.json
+
+# --- OS-Müll ---
+.DS_Store
+Thumbs.db
