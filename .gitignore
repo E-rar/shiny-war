@@ -7,8 +7,8 @@ __pycache__/
 .venv/
 venv/
 
-# --- Live-Daten (wird vom Bot laufend erzeugt/aktualisiert) ---
-hunts.json
+# Hinweis: hunts.json wird BEWUSST mitversioniert, damit die gehostete Web-App
+# (GitHub Pages) das Leaderboard laden kann. Der Bot pusht sie automatisch (debounced).
 
 # --- OS-Müll ---
 .DS_Store

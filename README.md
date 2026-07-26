@@ -30,7 +30,17 @@ python fetch_pokemon_data.py           # einmalig: pokemon_data.json erzeugen
 python bot.py
 ```
 
+## Hosting (GitHub Pages)
+
+Settings → Pages → Branch `main` / root. App-Link: `https://DEIN-NAME.github.io/shiny-war/`
+(Admin: `…/#nimda`). Die App lädt `hordes.json` und `hunts.json` automatisch aus dem Repo,
+sodass alle denselben Stand sehen.
+
+Der Bot pusht `hunts.json` **gebündelt**: erst wenn `GIT_PUSH_DELAY` Sekunden (Standard 300 = 5 Min)
+keine neue Änderung mehr kam, wird einmal committet & gepusht. Dafür muss `git` im Repo-Ordner
+eingerichtet sein (Remote + gespeicherte Zugangsdaten/Token), damit `git push` ohne Passwort-Eingabe läuft.
+
 ## Wichtig
 
 - Die echte `.env` mit dem Bot-Token wird **nicht** eingecheckt (`.gitignore`).
-- `hunts.json` (Live-Daten) ist ebenfalls in `.gitignore` – der Bot pflegt sie.
+- `hunts.json` wird **bewusst mitversioniert** (für das gehostete Leaderboard) und vom Bot automatisch gepusht.

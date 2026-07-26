@@ -12,8 +12,10 @@ Setup:
 3. python bot.py
 """
 
+import asyncio
 import json
 import os
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -30,6 +32,12 @@ DATA_FILE = Path(__file__).parent / "hunts.json"
 # ID des Text-Channels, in dem der Bot ausschließlich reagieren soll.
 # 0 = Einschränkung deaktiviert (Bot reagiert überall).
 ALLOWED_CHANNEL_ID = int(os.getenv("ALLOWED_CHANNEL_ID", "0"))
+
+# Automatisches Pushen der hunts.json ins Git-Repo (für die gehostete Web-App auf GitHub Pages).
+# GIT_AUTO_PUSH=0 schaltet es ab. GIT_PUSH_DELAY = Sekunden Wartezeit nach der letzten Änderung.
+REPO_DIR = Path(__file__).parent
+GIT_AUTO_PUSH = os.getenv("GIT_AUTO_PUSH", "1") != "0"
+GIT_PUSH_DELAY = int(os.getenv("GIT_PUSH_DELAY", "300"))  # Standard: 5 Minuten
 
 
 class RestrictedTree(app_commands.CommandTree):
@@ -80,6 +88,49 @@ def load_data() -> dict:
 def save_data(data: dict) -> None:
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
+
+
+# ---------------------------------------------------------------------------
+# Debounced Git-Push: bündelt viele Einträge zu EINEM Push.
+# Nach jeder Änderung wird ein Timer (GIT_PUSH_DELAY) gestartet; kommt vorher
+# eine weitere Änderung, wird der Timer zurückgesetzt. Erst wenn es GIT_PUSH_DELAY
+# Sekunden ruhig war, wird hunts.json committet und gepusht.
+# ---------------------------------------------------------------------------
+
+_push_task = None
+
+
+def _run_git_push() -> None:
+    """Blockierender Git-Teil (läuft in einem Thread, damit der Bot nicht hängt)."""
+    try:
+        subprocess.run(["git", "add", "hunts.json"], cwd=REPO_DIR, check=True)
+        # Nur committen, wenn es tatsächlich Änderungen gibt.
+        if subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=REPO_DIR).returncode == 0:
+            return
+        stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
+        subprocess.run(["git", "commit", "-m", f"Update hunts.json ({stamp})"], cwd=REPO_DIR, check=True)
+        subprocess.run(["git", "push"], cwd=REPO_DIR, check=True)
+        print("✅ hunts.json ins Repo gepusht.")
+    except Exception as e:
+        print(f"⚠️  Git-Push fehlgeschlagen: {e}")
+
+
+async def _push_after_delay() -> None:
+    try:
+        await asyncio.sleep(GIT_PUSH_DELAY)
+    except asyncio.CancelledError:
+        return  # Es kam eine neue Änderung -> Timer wurde zurückgesetzt.
+    await asyncio.to_thread(_run_git_push)
+
+
+def schedule_git_push() -> None:
+    """Setzt den Push-Timer (neu). Nach jeder schreibenden Aktion aufrufen."""
+    if not GIT_AUTO_PUSH:
+        return
+    global _push_task
+    if _push_task and not _push_task.done():
+        _push_task.cancel()
+    _push_task = asyncio.create_task(_push_after_delay())
 
 
 def record_user(data: dict, interaction: discord.Interaction) -> None:
@@ -204,6 +255,7 @@ async def hunt(interaction: discord.Interaction, pokemon: str):
     active[key] = hunters
     record_user(data, interaction)
     save_data(data)
+    schedule_git_push()
 
     embed = discord.Embed(
         description=f"✅ {interaction.user.mention} huntet jetzt **{display_name}**!{warning_text}",
@@ -237,6 +289,7 @@ async def unhunt(interaction: discord.Interaction, pokemon: str):
         active.pop(key, None)
     record_user(data, interaction)
     save_data(data)
+    schedule_git_push()
 
     await interaction.response.send_message(
         f"🛑 {interaction.user.mention} huntet **{display_name}** nicht mehr."
@@ -335,6 +388,7 @@ async def caught(interaction: discord.Interaction, pokemon: str):
     )
     record_user(data, interaction)
     save_data(data)
+    schedule_git_push()
 
     embed = discord.Embed(
         description=f"🎉✨ Glückwunsch {interaction.user.mention}! Du hast ein shiny **{display_name}** gefunden!",
