@@ -1300,7 +1300,7 @@ async function loadRepoData(){
   // Hunts: immer den neuesten Bot-Stand (falls im Repo veröffentlicht)
   if(REPO_HUNTS_URL){
     try{ const r=await fetch(REPO_HUNTS_URL+"?t="+Date.now());
-      if(r.ok){ const j=await r.json(); if(j&&(j.active||j.caught)){ DATA=j; saveData(); if(j.users){Object.assign(NAMES,j.users);saveNames();} } } }catch(e){}
+      if(r.ok){ const j=parseHunts(await r.text()); if(j&&(j.active||j.caught)){ DATA=j; saveData(); if(j.users){Object.assign(NAMES,j.users);saveNames();} } } }catch(e){}
   }
   refreshCaughtLines(); render();
 }
@@ -1370,11 +1370,16 @@ function setStatus(msg,cls){
                           : ' · <span class="ktag">Bilder via PokeAPI · pokemon_data.json laden für alle DE-Namen</span>';
   s.innerHTML=msg+dbtag; s.className="status "+(cls||"");
 }
+/* Discord-IDs (18–19-stellig) übersteigen JS-Zahlgenauigkeit -> vor dem Parsen in Strings wandeln,
+   damit user_id exakt bleibt und zum "users"-Feld passt. */
+function quoteBigInts(t){ return String(t).replace(/(?<!["\d])(\d{16,})(?!["\d])/g, '"$1"'); }
+function parseHunts(t){ return JSON.parse(quoteBigInts(t)); }
+
 function handleFile(f){
   if(!ADMIN){ toast("Upload nur im Admin-Modus möglich",true); return; }
   const r=new FileReader();
   r.onload=()=>{ try{
-      const obj=JSON.parse(r.result);
+      const obj=JSON.parse(quoteBigInts(r.result));
       if(isPokedb(obj)){
         applyPokedb(obj);
         setStatus("✓ "+f.name+" (Bilder) geladen","ok");
@@ -1395,7 +1400,8 @@ function loadFromUrl(){
   const url=prompt("URL zur hunts.json oder pokemon_data.json (öffentlich/CORS-fähig):");
   if(!url) return;
   setStatus("Lade…");
-  fetch(url).then(r=>r.json()).then(j=>{
+  fetch(url).then(r=>r.text()).then(t=>{
+    const j=parseHunts(t);
     if(isPokedb(j)){ applyPokedb(j); setStatus("✓ Bilder von URL geladen","ok"); }
     else { applyData(j); setStatus("✓ Von URL geladen","ok"); }
   }).catch(e=>setStatus("✗ Fehler: "+e.message,"err"));
