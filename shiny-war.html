@@ -913,16 +913,53 @@ let TAB="loc";
 let CEDIT=null; // Index des Fangs, der gerade bearbeitet wird (Admin)
 function showTab(t){TAB=t;document.querySelectorAll(".tab").forEach(el=>el.classList.toggle("active",el.dataset.tab===t));renderSeasonBar();render();}
 
+/* ============================================================
+   "JETZT GERADE" — Saison & Tageszeit aus Echtzeit/Ingame-Zeit
+   ------------------------------------------------------------
+   Ingame läuft 4× so schnell (1 Ingame-Stunde = 15 Real-Minuten).
+   Anker: 27.07.2026 12:00 UTC = Ingame 00:00  (entspricht real 19:20 MESZ = Ingame 21:20).
+   Tageszeit ingame: Nacht 21–4 Uhr · Morgen/Mittag 4–11 Uhr · Tag 11–21 Uhr.
+   Shiny War startet 01.08.2026 (Woche 1 = Frühling), danach wöchentlich weiter.
+   (Konstanten unten anpassbar, falls die Zeit mal minimal driftet.) */
+const IG_ANCHOR_UTC = Date.UTC(2026,6,27,12,0,0); // Ingame 00:00
+const WAR_START_UTC = Date.UTC(2026,7,1,0,0,0);    // 01.08.2026 -> Woche 1 = Frühling
+const SEASON_ORDER  = ["fruehling","sommer","herbst","winter"];
+function ingameMinutes(t){ let m=((t-IG_ANCHOR_UTC)/60000)*4; return ((m%1440)+1440)%1440; }
+function todAtHour(h){ if(h>=21||h<4) return "nacht"; if(h<11) return "morgen"; return "tag"; }
+function seasonAtTime(t){ if(t<WAR_START_UTC) return "fruehling"; const w=Math.floor((t-WAR_START_UTC)/(7*864e5)); return SEASON_ORDER[((w%4)+4)%4]; }
+function nowState(t){ t=t||Date.now(); const m=ingameMinutes(t), h=Math.floor(m/60);
+  const week = t<WAR_START_UTC ? 0 : Math.floor((t-WAR_START_UTC)/(7*864e5))+1;
+  return {season:seasonAtTime(t), tod:todAtHour(h), h, min:Math.floor(m%60), week}; }
+function pad2(n){return String(n).padStart(2,"0");}
+function nowInfoHTML(){ const s=nowState(); const tl=(TIMES.find(x=>x[0]===s.tod)||["",""])[1];
+  const seas=(SEASONS.find(x=>x[0]===s.season)||["",""])[1];
+  const wk = s.week ? ("Woche "+s.week+" · "+seas) : ("startet 1. Aug · "+seas);
+  const synced = (SEASON===s.season && TOD===s.tod);
+  return `Ingame <b>${pad2(s.h)}:${pad2(s.min)}</b> · ${tl} · <span class="ktag">${wk}</span>`+
+    (synced?` <span style="color:var(--good)">● live</span>`:``);
+}
+function updateNowInfo(){ const el=document.getElementById("nowInfo"); if(el) el.innerHTML=nowInfoHTML(); }
+function applyNow(){ const s=nowState(); SEASON=s.season; TOD=s.tod;
+  try{localStorage.setItem("sw_season",SEASON);localStorage.setItem("sw_tod",TOD);}catch(e){}
+  if(TAB!=="loc"){ TAB="loc"; document.querySelectorAll(".tab").forEach(el=>el.classList.toggle("active",el.dataset.tab==="loc")); }
+  renderSeasonBar(); render();
+  toast("🕒 Jetzt: "+seasonLabel()+" · "+(TIMES.find(x=>x[0]===TOD)||["",""])[1]+" (Ingame "+pad2(s.h)+":"+pad2(s.min)+")");
+}
+
 function renderSeasonBar(){
   const bar=document.getElementById("seasonbar");
   const show=(TAB==="loc");
   bar.style.display=show?"flex":"none";
   if(!show){bar.innerHTML="";return;}
-  bar.innerHTML=`<span style="align-self:center;font-size:12px;color:var(--muted);margin-right:4px">Saison:</span>`+
+  bar.innerHTML=`<button class="btn primary" style="align-self:center" onclick="applyNow()" title="Saison & Tageszeit automatisch auf die aktuelle (Ingame-)Zeit setzen">🕒 Jetzt gerade</button>`+
+    `<span id="nowInfo" class="ktag" style="align-self:center;margin:0 6px"></span>`+
+    `<div style="flex-basis:100%;height:0"></div>`+
+    `<span style="align-self:center;font-size:12px;color:var(--muted);margin-right:4px">Saison:</span>`+
     SEASONS.map(([k,lab])=>`<div class="season ${SEASON===k?'active':''}" data-s="${k}" onclick="setSeason('${k}')">${lab}</div>`).join("")+
     `<div style="flex-basis:100%;height:0"></div>`+
     `<span style="align-self:center;font-size:12px;color:var(--muted);margin-right:4px">Zeit:</span>`+
     TIMES.map(([k,lab])=>`<div class="season timechip ${TOD===k?'active':''}" data-t="${k}" onclick="setTod('${k}')">${lab}</div>`).join("");
+  updateNowInfo();
 }
 
 function tierBadge(t){
@@ -1669,6 +1706,7 @@ renderSeasonBar();
 render();
 fetchPkmnIndex(); // holt einmalig Dex-IDs von der PokeAPI für Bilder (danach gecacht)
 loadRepoData();   // holt hordes.json (u. optional hunts.json) automatisch aus dem Repo (GitHub Pages)
+setInterval(updateNowInfo,30000); // Ingame-Uhr in der Season-Bar live halten
 
 /* Nach-oben-Button: sichtbar ab 1,5 Bildschirmhöhen Scroll */
 (function(){
