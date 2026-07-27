@@ -568,8 +568,8 @@ let POKEDB=loadPokedb();
 function loadPokedb(){try{return JSON.parse(localStorage.getItem("sw_pokedb")||"{}")}catch(e){return{}}}
 function savePokedb(){try{localStorage.setItem("sw_pokedb",JSON.stringify(POKEDB))}catch(e){}}
 let PKMN_INDEX=loadPkmnIndex();
-function loadPkmnIndex(){try{return JSON.parse(localStorage.getItem("sw_pkmn")||"{}")}catch(e){return{}}}
-function savePkmnIndex(){try{localStorage.setItem("sw_pkmn",JSON.stringify(PKMN_INDEX))}catch(e){}}
+function loadPkmnIndex(){try{return JSON.parse(localStorage.getItem("sw_pkmn2")||"{}")}catch(e){return{}}}
+function savePkmnIndex(){try{localStorage.setItem("sw_pkmn2",JSON.stringify(PKMN_INDEX))}catch(e){}}
 function spriteUrlById(id){return "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/"+id+".png";}
 function cap(s){return s?s.charAt(0).toUpperCase()+s.slice(1):s;}
 
@@ -584,9 +584,10 @@ function dexIdFor(name){
 async function fetchPkmnIndex(){
   if(Object.keys(PKMN_INDEX).length>50) return; // schon im Cache
   try{
-    const r=await fetch("https://pokeapi.co/api/v2/pokemon?limit=100000");
+    // pokemon-species kennt die einfachen Basisnamen (z. B. basculin/frillish/yamask) inkl. Dex-ID
+    const r=await fetch("https://pokeapi.co/api/v2/pokemon-species?limit=100000");
     const j=await r.json();
-    for(const e of j.results){ const m=e.url.match(/\/pokemon\/(\d+)\//); if(m) PKMN_INDEX[norm(e.name)]=Number(m[1]); }
+    for(const e of j.results){ const m=e.url.match(/\/pokemon-species\/(\d+)\//); if(m) PKMN_INDEX[norm(e.name)]=Number(m[1]); }
     savePkmnIndex(); if(typeof render==="function") render();
   }catch(e){/* offline -> Bilder ggf. nur mit pokemon_data.json */}
 }
@@ -795,6 +796,11 @@ function setLure(v){LURE_ON=!!v;try{localStorage.setItem("sw_lure",LURE_ON?"1":"
 let HORDES=loadHordes();
 function loadHordes(){try{return JSON.parse(localStorage.getItem("sw_hordes")||"[]")}catch(e){return[]}}
 function saveHordes(){try{localStorage.setItem("sw_hordes",JSON.stringify(HORDES))}catch(e){}}
+/* "dirty" = lokale Horden-Änderungen, die noch nicht ins Repo exportiert/committet sind.
+   Solange dirty, überschreibt der Repo-Auto-Load die lokalen Änderungen NICHT. */
+function hordesDirty(){try{return localStorage.getItem("sw_hordes_dirty")==="1"}catch(e){return false}}
+function setHordesDirty(v){try{localStorage.setItem("sw_hordes_dirty",v?"1":"0")}catch(e){}}
+function markHordesEdited(){saveHordes();setHordesDirty(true);}
 
 function loadNames(){try{return JSON.parse(localStorage.getItem("sw_names")||"{}")}catch(e){return{}}}
 function saveNames(){try{localStorage.setItem("sw_names",JSON.stringify(NAMES))}catch(e){}}
@@ -1035,7 +1041,7 @@ function habStyle(hd){const c=HAB_COL[hd&&hd.hab];return c?`border-color:${c};bo
 function habBadge(hd){const k=hd&&hd.hab,c=HAB_COL[k];return c?`<span class="badge" style="background:${c};color:#10141c">${habLabel(k)}</span>`:"";}
 function levelBadge(hd){return hd&&hd.level?`<span class="badge" style="background:var(--panel2);color:var(--text);border:1px solid var(--border)">🪜 ${esc(hd.level)}</span>`:"";}
 function habSelect(id,cur){return `<select class="hab-sel" onchange="setHordeHab('${id}',this.value)">${HABITATS.map(([k,l])=>`<option value="${k}"${(cur||"")===k?" selected":""}>${l}</option>`).join("")}</select>`;}
-function setHordeHab(id,v){const hd=HORDES.find(h=>h.id===id);if(hd){hd.hab=v||"";saveHordes();render();}}
+function setHordeHab(id,v){const hd=HORDES.find(h=>h.id===id);if(hd){hd.hab=v||"";markHordesEdited();render();}}
 
 function encRate(hd){return methodInfo(methodOf(hd))[2];} // max. Encounter/Stunde je Methode
 function rating(hd){return encRate(hd)*effExpValue(hd);}  // Bewertung = Enc/h × effektiver Ø-Wert (inkl. Unique-Bonus)
@@ -1144,6 +1150,7 @@ function renderLoc(){
       <button class="btn" onclick="pullRepo()" title="Aktuelle hordes.json aus dem Repo laden">⟳ Repo laden</button>
       ${HORDES.length?"":'<button class="btn" onclick="seedExampleHorde()">Beispiel einfügen</button>'}
     </div>`:""}`;
+  if(ADMIN && hordesDirty()) h+=`<p class="hint" style="color:var(--warn);margin:0 0 10px">⚠ Ungespeicherte lokale Änderungen — mit <b>⬇ Export</b> herunterladen, in den Repo-Ordner legen und committen, damit alle sie sehen. („⟳ Repo laden" verwirft sie.)</p>`;
   if(ADMIN && ED && !ED.id) h+=hordeEditorHTML(); // neue Horde: Editor oben
   if(HORDES.length) h+=searchBarHTML();
   if(!HORDES.length && !(ADMIN&&ED)) h+=`<div class="empty">Noch keine Horden vorhanden.${ADMIN?'<br>Klick „+ Neue Horde" — oder „Beispiel einfügen", um das Format zu sehen.':' Ein Admin muss sie anlegen bzw. importieren.'}</div>`;
@@ -1320,22 +1327,24 @@ function saveHorde(){
   d.members=named.map(m=>({name:canonSpecies(m.name),s:m.s,tod:m.tod||"immer",lure:!!m.lure}));
   if(ED.id){const hd=HORDES.find(h=>h.id===ED.id);if(hd)Object.assign(hd,d);}
   else HORDES.push({id:"h"+Date.now().toString(36)+Math.random().toString(36).slice(2,5),...d});
-  saveHordes(); ED=null; toast("✓ Horde gespeichert"); render();
+  markHordesEdited(); ED=null; toast("✓ Horde gespeichert"); render();
 }
 function deleteHorde(id){const hd=HORDES.find(h=>h.id===id);if(!confirm("Horde \""+(hd?hd.loc:"")+"\" löschen?"))return;
-  HORDES=HORDES.filter(h=>h.id!==id);saveHordes();toast("Horde gelöscht");render();}
+  HORDES=HORDES.filter(h=>h.id!==id);markHordesEdited();toast("Horde gelöscht");render();}
 function duplicateHorde(id){
   const i=HORDES.findIndex(h=>h.id===id); if(i<0) return;
   const copy=JSON.parse(JSON.stringify(HORDES[i]));
   copy.id="h"+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
   HORDES.splice(i+1,0,copy);
-  saveHordes(); toast("Kachel dupliziert — jetzt für die andere Ebene anpassen"); render();
+  markHordesEdited(); toast("Kachel dupliziert — jetzt für die andere Ebene anpassen"); render();
 }
 
 function exportHordes(){
   const blob=new Blob([JSON.stringify({hordes:HORDES},null,2)],{type:"application/json"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="hordes.json";
-  document.body.appendChild(a);a.click();a.remove();toast("⬇ hordes.json exportiert");
+  document.body.appendChild(a);a.click();a.remove();
+  setHordesDirty(false); // veröffentlicht -> nicht mehr "dirty"
+  toast("⬇ hordes.json exportiert — jetzt ins Repo committen"); render();
 }
 function exportHunts(){
   // IDs wieder als Zahlen ausgeben (bot-kompatibel), inkl. der gesetzten Sonderfall-Flags
@@ -1353,7 +1362,7 @@ function applyHordes(arr){
       if((!s||!Object.keys(s).length) && m.p!=null){const v=Number(m.p)||0; s={fruehling:v,sommer:v,herbst:v,winter:v};}
       return {name:m.name||"",s:s||{},tod:m.tod||"immer",lure:!!m.lure};
     })}));
-  saveHordes();
+  saveHordes(); setHordesDirty(false); // Import/Repo = bekannter Stand -> sauber
 }
 function importHordes(input){
   const f=input.files[0];if(!f)return;input.value="";
@@ -1371,8 +1380,8 @@ const REPO_HORDES_URL="hordes.json"; // liegt im Repo -> wird automatisch gelade
 const REPO_HUNTS_URL="hunts.json";   // nur wenn der Bot sie ins Repo pusht (sonst 404 -> ignoriert)
 async function loadRepoData(){
   if(!location.protocol.startsWith("http")) return; // lokal per Datei geöffnet -> kein Auto-Load
-  // Horden: Viewer bekommen immer den Repo-Stand; Admin nur, wenn noch keine lokalen Horden da sind
-  if(!ADMIN || !HORDES.length){
+  // Repo-Stand laden, AUSSER es gibt ungespeicherte lokale Änderungen (dirty)
+  if(!hordesDirty() && (!ADMIN || !HORDES.length)){
     try{ const r=await fetch(REPO_HORDES_URL+"?t="+Date.now());
       if(r.ok){ const j=await r.json(); const arr=Array.isArray(j)?j:(j.hordes||[]); if(arr.length) applyHordes(arr); } }catch(e){}
   }
@@ -1396,7 +1405,7 @@ function seedExampleHorde(){
       {name:"Schwalbini",s:{fruehling:20,sommer:20,herbst:20,winter:0}},
       {name:"Gehweiher",s:{fruehling:20,sommer:20,herbst:40,winter:80}}
     ]});
-  saveHordes();toast("Beispiel-Horde eingefügt");render();
+  markHordesEdited();toast("Beispiel-Horde eingefügt");render();
 }
 
 function renderNames(){
