@@ -87,7 +87,11 @@
   .season.active[data-s="herbst"]{background:#ff9f45}
   .season.active[data-s="winter"]{background:#8fd3ff}
   .season.timechip.active{background:#b98cff;color:#10141c;border-color:transparent}
-  .hcard{border:1px solid var(--border);border-radius:11px;padding:14px;margin-bottom:12px;background:var(--panel2)}
+  .hcard{position:relative;border:1px solid var(--border);border-radius:11px;padding:14px;margin-bottom:12px;background:var(--panel2)}
+  .hcard.ranked{padding-left:46px}
+  .rankno{position:absolute;top:10px;left:8px;width:30px;text-align:center;font-weight:800;font-size:15px;color:var(--muted);line-height:1.1}
+  .rankno small{display:block;font-size:8px;font-weight:600;letter-spacing:.5px;color:var(--muted);opacity:.7}
+  .rankno.top1{color:#ffd23f}.rankno.top2{color:#c7d0da}.rankno.top3{color:#e0965a}
   .hcard h3{margin:0 0 2px;font-size:15px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .hcard .loc-note{color:var(--muted);font-size:12.5px;margin:0 0 10px}
   .hactions{margin-left:auto;display:flex;gap:6px}
@@ -1045,6 +1049,20 @@ function setHordeHab(id,v){const hd=HORDES.find(h=>h.id===id);if(hd){hd.hab=v||"
 
 function encRate(hd){return methodInfo(methodOf(hd))[2];} // max. Encounter/Stunde je Methode
 function rating(hd){return encRate(hd)*effExpValue(hd);}  // Bewertung = Enc/h × effektiver Ø-Wert (inkl. Unique-Bonus)
+/* Overall-Rang jeder Horde nach Bewertung (1 = beste), gleiche Bewertung = gleicher Platz.
+   Wird über ALLE Horden (aktueller Filter) berechnet, damit der Platz auch beim Suchen sichtbar bleibt. */
+let HORDE_RANKS={};
+function computeHordeRanks(){
+  HORDE_RANKS={};
+  const arr=HORDES.map(hd=>({id:hd.id,r:Math.round(rating(hd))})).sort((a,b)=>b.r-a.r);
+  let lastR=null, rank=0;
+  arr.forEach((x,i)=>{ if(x.r!==lastR){ rank=i+1; lastR=x.r; } HORDE_RANKS[x.id]=rank; });
+}
+function rankBadgeHTML(hd){
+  const r=HORDE_RANKS[hd.id]; if(!r) return "";
+  const cls=r<=3?" top"+r:"";
+  return `<span class="rankno${cls}" title="Platz ${r} nach Bewertung (gesamt)"><small>PLATZ</small>${r}</span>`;
+}
 function fmtNum(n){return Math.round(n).toLocaleString("de-DE");}
 function pctOf(m){const v=m.s?m.s[SEASON]:0;return Number(v)||0;}
 /* effektiver %-Wert: Lure-Mons fix 5% (nur wenn eingeblendet), sonst Saison × Tageszeit */
@@ -1169,6 +1187,7 @@ function renderLoc(){
   if(ADMIN && ED && !ED.id) h+=hordeEditorHTML(); // neue Horde: Editor oben
   if(HORDES.length) h+=searchBarHTML();
   if(!HORDES.length && !(ADMIN&&ED)) h+=`<div class="empty">Noch keine Horden vorhanden.${ADMIN?'<br>Klick „+ Neue Horde" — oder „Beispiel einfügen", um das Format zu sehen.':' Ein Admin muss sie anlegen bzw. importieren.'}</div>`;
+  computeHordeRanks();
   const sorted=[...HORDES].sort((a,b)=>rating(b)-rating(a));
   for(const hd of sorted){
     if(ADMIN && ED && ED.id===hd.id) h+=hordeEditorHTML(); // Editor an Ort der bearbeiteten Kachel
@@ -1184,7 +1203,8 @@ function renderHordeCard(hd,edit){
   const totalMembers=(hd.members||[]).length;
   const mem=activeMembers(hd);
   const ev=effExpValue(hd);
-  let h=`<div class="hcard" data-spec="${esc(hordeSpec(hd))}" data-loc="${esc(hordeLocKey(hd))}" style="${habStyle(hd)}">
+  let h=`<div class="hcard ranked" data-spec="${esc(hordeSpec(hd))}" data-loc="${esc(hordeLocKey(hd))}" style="${habStyle(hd)}">
+    ${rankBadgeHTML(hd)}
     <h3>📍 ${esc(hd.loc||"—")} ${hd.region?`<span class="ktag">${esc(hd.region)}</span>`:""} ${methodBadge(hd)} ${habBadge(hd)} ${levelBadge(hd)}
       ${edit?`<span class="hactions">
         ${habSelect(hd.id,hd.hab)}
