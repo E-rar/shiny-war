@@ -89,6 +89,14 @@
   .season.timechip.active{background:#b98cff;color:#10141c;border-color:transparent}
   .hcard{position:relative;border:1px solid var(--border);border-radius:11px;padding:14px;margin-bottom:12px;background:var(--panel2)}
   .hcard.ranked{padding-left:46px}
+  .chartwrap{overflow-x:auto;margin:6px 0 2px}
+  .stleg{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;margin-right:12px}
+  .tl{display:flex;flex-direction:column;gap:2px}
+  .tlrow{display:flex;align-items:center;gap:10px}
+  .tldate{flex:0 0 74px;text-align:right;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .tldot{flex:0 0 10px;width:10px;height:10px;border-radius:50%;position:relative}
+  .tlrow:not(:last-child) .tldot::after{content:"";position:absolute;left:50%;top:12px;transform:translateX(-50%);width:2px;height:20px;background:var(--border)}
+  .tlbody{flex:1;display:flex;align-items:center;gap:7px;flex-wrap:wrap;background:var(--panel2);border:1px solid var(--border);border-radius:9px;padding:7px 11px;margin:3px 0;font-size:13px}
   .rankno{position:absolute;top:10px;left:8px;width:30px;text-align:center;font-weight:800;font-size:15px;color:var(--muted);line-height:1.1}
   .rankno small{display:block;font-size:8px;font-weight:600;letter-spacing:.5px;color:var(--muted);opacity:.7}
   .rankno.top1{color:#ffd23f}.rankno.top2{color:#c7d0da}.rankno.top3{color:#e0965a}
@@ -168,6 +176,7 @@
     <div class="tab" data-tab="hunt" onclick="showTab('hunt')">🎯 Wer huntet was</div>
     <div class="tab active" data-tab="loc" onclick="showTab('loc')">🗺️ Horden</div>
     <div class="tab" data-tab="tier" onclick="showTab('tier')">📋 Tierlist</div>
+    <div class="tab" data-tab="stats" onclick="showTab('stats')">📈 Statistik</div>
     <button class="btn" style="margin-left:auto;align-self:center" onclick="copyShareLink()" title="Aktuellen Link kopieren (Tab, Saison, Zeit, Filter)">🔗 Teilen</button>
   </div>
 
@@ -938,7 +947,7 @@ function writeUrl(){
 function readUrl(){
   try{
     const p=new URLSearchParams(location.search);
-    const tb=p.get("tab"); if(["loc","lb","hunt","tier"].includes(tb)) TAB=tb;
+    const tb=p.get("tab"); if(["loc","lb","hunt","tier","stats"].includes(tb)) TAB=tb;
     const se=p.get("season"); if(SEASONS.some(x=>x[0]===se)){ SEASON=se; try{localStorage.setItem("sw_season",se)}catch(e){} }
     const td=p.get("tod"); if(["morgen","tag","nacht"].includes(td)){ TOD=td; try{localStorage.setItem("sw_tod",td)}catch(e){} }
     if(p.has("lure")){ LURE_ON=p.get("lure")==="1"; try{localStorage.setItem("sw_lure",LURE_ON?"1":"0")}catch(e){} }
@@ -962,6 +971,7 @@ function render(){
   if(TAB==="lb") return renderLeaderboard();
   if(TAB==="hunt") return renderHunt();
   if(TAB==="tier") return renderTierlist();
+  if(TAB==="stats") return renderStats();
   if(TAB==="loc") return renderLoc();
 }
 
@@ -1061,6 +1071,78 @@ function renderHunt(){
   }
   h+=`</tbody></table></div>`;
   view.innerHTML=h;
+}
+
+/* ---------- Spieler-Statistik ---------- */
+const STAT_PALETTE=["#7bd88f","#ffd23f","#4aa3ff","#ff9f45","#c678dd","#e23b3b","#5fd0c0","#f078a8","#a0d468","#b0895a"];
+function statEvents(){
+  const {rows}=computeScores();
+  const colorOf={}; rows.forEach((r,i)=>colorOf[r.id]=STAT_PALETTE[i%STAT_PALETTE.length]);
+  const ev=[];
+  rows.forEach(r=>(r.catches||[]).forEach(c=>{
+    ev.push({id:r.id,player:uname(r.id),date:c.date||"",name:c.name,tier:c.tier,total:c.pts+(c.bonus||0),tag:c.tag,e:c.e,f:c.f,idx:c.idx});
+  }));
+  ev.sort((a,b)=> (a.date<b.date?-1:a.date>b.date?1:a.idx-b.idx));
+  return {rows,colorOf,ev};
+}
+function statChartSVG(ev,rows,colorOf){
+  const W=680,H=240,padL=40,padR=14,padT=14,padB=44,n=ev.length;
+  const xs=i=> n<=1 ? padL+(W-padL-padR)/2 : padL+(W-padL-padR)*i/(n-1);
+  const cum={},series={}; rows.forEach(r=>{cum[r.id]=0;series[r.id]=[];});
+  let maxY=1;
+  ev.forEach(e=>{ cum[e.id]+=e.total; rows.forEach(r=>series[r.id].push(cum[r.id])); });
+  rows.forEach(r=>{maxY=Math.max(maxY,cum[r.id]);});
+  const yScale=v=> padT+(H-padT-padB)*(1-v/maxY);
+  let g="";
+  for(let k=0;k<=4;k++){ const val=Math.round(maxY*k/4), y=yScale(val);
+    g+=`<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="var(--border)" stroke-width="1" opacity="0.5"/>`+
+       `<text x="${padL-6}" y="${y+3}" text-anchor="end" font-size="10" fill="var(--muted)">${val}</text>`;
+  }
+  // x-Ticks: nur wenn sich das Datum ändert
+  let lastD=null;
+  ev.forEach((e,i)=>{ if(e.date && e.date!==lastD){ lastD=e.date; const x=xs(i);
+    g+=`<line x1="${x}" y1="${padT}" x2="${x}" y2="${H-padB}" stroke="var(--border)" stroke-width="1" opacity="0.25"/>`+
+       `<text x="${x}" y="${H-padB+14}" text-anchor="middle" font-size="9" fill="var(--muted)" transform="rotate(0 ${x} ${H-padB+14})">${esc(e.date.slice(5))}</text>`;
+  }});
+  let lines="";
+  rows.forEach(r=>{ const col=colorOf[r.id]; const s=series[r.id];
+    if(s.length>1){ const pts=s.map((v,i)=>`${xs(i).toFixed(1)},${yScale(v).toFixed(1)}`).join(" ");
+      lines+=`<polyline points="${pts}" fill="none" stroke="${col}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`; }
+    const li=s.length-1;
+    lines+=`<circle cx="${xs(li).toFixed(1)}" cy="${yScale(s[li]).toFixed(1)}" r="3.2" fill="${col}"/>`;
+  });
+  const legend=rows.map(r=>`<span class="stleg"><span class="dot" style="background:${colorOf[r.id]}"></span>${esc(uname(r.id))} <b>${cum[r.id]}</b></span>`).join("");
+  return `<div class="chartwrap"><svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;max-width:${W}px" xmlns="http://www.w3.org/2000/svg">
+    ${g}<line x1="${padL}" y1="${H-padB}" x2="${W-padR}" y2="${H-padB}" stroke="var(--border)" stroke-width="1.5"/>${lines}</svg></div>
+    <div class="legend" style="justify-content:flex-start">${legend}</div>`;
+}
+function renderStats(){
+  const {rows,colorOf,ev}=statEvents();
+  if(!ev.length){ view.innerHTML=`<div class="card"><h2>📈 Spieler-Statistik</h2>
+    <p class="hint">Noch keine gefangenen Shinys mit Datum in <code>hunts.json</code>. Sobald das Team Shinys einträgt, erscheinen hier Punkte-Verlauf und Timeline.</p></div>`; return; }
+  const chart=statChartSVG(ev,rows,colorOf);
+  let tl=`<div class="tl">`;
+  for(const e of [...ev].reverse()){
+    const col=colorOf[e.id]||"#8aa";
+    const badge=e.tier!=null?tierBadge(e.tier):'<span class="ktag">—</span>';
+    let flags="";
+    if(e.tag==="legendary") flags+=' <span style="color:#ffd23f">★</span>';
+    else if(e.tag==="alpha") flags+=' <span style="color:var(--accent)">α</span>';
+    else if(e.tag==="egg") flags+=' 🥚'; else if(e.tag==="dup") flags+=' <span class="ktag">Dup</span>';
+    if(e.f&&e.f.secret) flags+=' 🔒'; if(e.f&&e.f.safari) flags+=' 🌴';
+    tl+=`<div class="tlrow">
+      <div class="tldate">${e.date?esc(e.date):'<span class="ktag">o. Datum</span>'}</div>
+      <div class="tldot" style="background:${col}"></div>
+      <div class="tlbody"><span class="spwrap">${icon(e.name,e.tier!=null?{t:e.tier,n:[e.name],e:e.e}:null,'sm')} <b>${esc(e.name)}</b> ${badge}${flags}</span>
+        <span class="ktag">·</span> <b style="color:${col}">${esc(e.player)}</b>
+        <b class="pts" style="margin-left:auto">+${e.total}</b></div></div>`;
+  }
+  tl+=`</div>`;
+  view.innerHTML=`<div class="card"><h2>📈 Spieler-Statistik</h2>
+    <p class="hint">Kumulierter Punkte-Verlauf je Spieler (jeder Punkt = ein Fang) und Timeline aller Fänge aus <code>hunts.json</code>. ${ev.length} Fänge · ${rows.length} Spieler.</p>
+    ${chart}
+    <h3 style="margin:20px 0 10px">🕒 Catches-Timeline <span class="ktag">(neueste zuerst)</span></h3>
+    ${tl}</div>`;
 }
 
 /* ---------- Horden-Helfer ---------- */
