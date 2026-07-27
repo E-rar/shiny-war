@@ -1063,7 +1063,22 @@ function refreshCaughtLines(){
 function teamHasLine(name){ const l=resolve(name); return l?CAUGHT_LINES.has(norm(l.e)):false; }
 /* Effektiver Punktwert einer Species: Tier-Wert + 8 Unique-Bonus, falls Team-Linie noch offen */
 function effPoints(name){ const l=resolve(name); if(!l) return 0; return l.p + (CAUGHT_LINES.has(norm(l.e))?0:8); }
-function effExpValue(hd){ return (hd.members||[]).reduce((s,m)=>s+(activePct(m)/100)*effPoints(m.name),0); }
+/* Sichtbare Members für aktuellen Filter (Saison/Tageszeit/Lure), Prozente auf Summe=100 normalisiert.
+   Bsp.: Magmar nur morgens/mittags -> nachts fällt er raus, Luxio wird auf 100% hochskaliert. */
+function activeMembers(hd){
+  const vis=(hd.members||[]).map(m=>({...m,raw:activePct(m),line:resolve(m.name)})).filter(m=>m.raw>0);
+  const sum=vis.reduce((s,m)=>s+m.raw,0)||1;
+  vis.forEach(m=>{ m.frac=m.raw/sum; });
+  if(vis.length){ // Anzeige-Prozente exakt auf Summe=100 runden (Largest-Remainder)
+    const exact=vis.map(m=>m.frac*100), floor=exact.map(Math.floor);
+    const rest=100-floor.reduce((a,b)=>a+b,0);
+    const order=exact.map((v,i)=>[v-floor[i],i]).sort((a,b)=>b[0]-a[0]);
+    vis.forEach((m,i)=>m.pct=floor[i]);
+    for(let k=0;k<rest && k<order.length;k++) vis[order[k][1]].pct++;
+  }
+  return vis.sort((a,b)=>b.raw-a.raw);
+}
+function effExpValue(hd){ return activeMembers(hd).reduce((s,m)=>s+m.frac*effPoints(m.name),0); }
 
 let ED=null; // Editor-Status: null=zu, sonst {id, draft}
 let SEARCH="";  // Pokémon-Suche (filtert Horden)
@@ -1167,7 +1182,7 @@ function renderLoc(){
 
 function renderHordeCard(hd,edit){
   const totalMembers=(hd.members||[]).length;
-  const mem=(hd.members||[]).map(m=>({...m,pct:activePct(m)})).filter(m=>m.pct>0).sort((a,b)=>b.pct-a.pct);
+  const mem=activeMembers(hd);
   const ev=effExpValue(hd);
   let h=`<div class="hcard" data-spec="${esc(hordeSpec(hd))}" data-loc="${esc(hordeLocKey(hd))}" style="${habStyle(hd)}">
     <h3>📍 ${esc(hd.loc||"—")} ${hd.region?`<span class="ktag">${esc(hd.region)}</span>`:""} ${methodBadge(hd)} ${habBadge(hd)} ${levelBadge(hd)}
@@ -1241,15 +1256,14 @@ function renderSplit(){
     <p class="hint">Prozentuale Zusammensetzung jeder Horde in dieser Saison, sortiert nach Bewertung (Pkt/Std). Farbe = Tier.</p>`;
   h+=searchBarHTML();
   for(const {hd,ev,rt} of ranked){
-    const mem=(hd.members||[]).map(m=>({...m,pct:activePct(m),line:resolve(m.name)})).filter(m=>m.pct>0).sort((a,b)=>b.pct-a.pct);
+    const mem=activeMembers(hd);
     h+=`<div class="hcard" data-spec="${esc(hordeSpec(hd))}" data-loc="${esc(hordeLocKey(hd))}" style="${habStyle(hd)}"><h3>📍 ${esc(hd.loc||"—")} ${hd.region?`<span class="ktag">${esc(hd.region)}</span>`:""} ${methodBadge(hd)} ${habBadge(hd)} ${levelBadge(hd)}
       <span class="hactions evexp">Ø ${ev.toFixed(1)} · Bewertung <b style="color:var(--good)">${fmtNum(rt)}</b></span></h3>`;
     if(!mem.length){ h+=`<p class="loc-note">Keine %-Werte für ${seasonLabel()}.</p></div>`; continue; }
-    const sum=mem.reduce((s,m)=>s+m.pct,0)||1;
     h+=`<div class="stacked">`;
     for(const m of mem){
       const col=m.line?TIER_COLORS[m.line.t]:"#5c6b7a";
-      const w=m.pct/sum*100;
+      const w=m.frac*100;
       h+=`<div title="${esc(memName(m.name))} — ${m.pct}%" style="width:${w}%;background:${col}">${w>9?esc(memName(m.name)):""}</div>`;
     }
     h+=`</div><div class="legend" style="justify-content:flex-start">`+
