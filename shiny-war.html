@@ -168,6 +168,7 @@
     <div class="tab" data-tab="hunt" onclick="showTab('hunt')">🎯 Wer huntet was</div>
     <div class="tab active" data-tab="loc" onclick="showTab('loc')">🗺️ Horden</div>
     <div class="tab" data-tab="tier" onclick="showTab('tier')">📋 Tierlist</div>
+    <button class="btn" style="margin-left:auto;align-self:center" onclick="copyShareLink()" title="Aktuellen Link kopieren (Tab, Saison, Zeit, Filter)">🔗 Teilen</button>
   </div>
 
   <div id="view"></div>
@@ -920,7 +921,44 @@ function tierBadge(t){
   return `<span class="badge" style="background:${TIER_COLORS[t]}">T${t}</span>`;
 }
 
+/* ---- Deeplinks: aktueller Zustand (Tab, Saison, Zeit, Lure, Suche) in der URL ---- */
+function writeUrl(){
+  try{
+    const p=new URLSearchParams();
+    p.set("tab",TAB);
+    p.set("season",SEASON);
+    p.set("tod",TOD);
+    if(LURE_ON) p.set("lure","1");
+    if(SEARCH) p.set("s",SEARCH);
+    if(LSEARCH) p.set("loc",LSEARCH);
+    const url=location.pathname+"?"+p.toString()+(location.hash||"");
+    history.replaceState(null,"",url);
+  }catch(e){}
+}
+function readUrl(){
+  try{
+    const p=new URLSearchParams(location.search);
+    const tb=p.get("tab"); if(["loc","lb","hunt","tier"].includes(tb)) TAB=tb;
+    const se=p.get("season"); if(SEASONS.some(x=>x[0]===se)){ SEASON=se; try{localStorage.setItem("sw_season",se)}catch(e){} }
+    const td=p.get("tod"); if(["morgen","tag","nacht"].includes(td)){ TOD=td; try{localStorage.setItem("sw_tod",td)}catch(e){} }
+    if(p.has("lure")){ LURE_ON=p.get("lure")==="1"; try{localStorage.setItem("sw_lure",LURE_ON?"1":"0")}catch(e){} }
+    const s=p.get("s"); if(s!=null) SEARCH=s;
+    const l=p.get("loc"); if(l!=null) LSEARCH=l;
+    // Tab-Markierung an den URL-Zustand angleichen
+    document.querySelectorAll(".tab").forEach(el=>el.classList.toggle("active",el.dataset.tab===TAB));
+  }catch(e){}
+}
+function copyShareLink(){
+  writeUrl();
+  const link=location.href.split("#")[0]; // Admin-Hash (#nimda) nicht mitteilen
+  const ok=()=>toast("🔗 Link kopiert – teilbar mit aktuellem Filter");
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(link).then(ok).catch(()=>prompt("Link kopieren:",link));
+  }else{ prompt("Link kopieren:",link); }
+}
+
 function render(){
+  writeUrl();
   if(TAB==="lb") return renderLeaderboard();
   if(TAB==="hunt") return renderHunt();
   if(TAB==="tier") return renderTierlist();
@@ -1159,6 +1197,7 @@ function commitSearch(v){
   applyHordeFilter();
 }
 function applyHordeFilter(){
+  writeUrl();
   const q=norm(SEARCH), lq=norm(LSEARCH), cnt=document.getElementById("hordeCount");
   let vis=0,total=0;
   document.querySelectorAll("#view .hcard").forEach(c=>{
@@ -1542,6 +1581,7 @@ buildSpeciesOptions();
 buildLocOptions();
 ensureDatalists();
 refreshCaughtLines();
+readUrl();        // Deeplink-Zustand (Tab, Saison, Zeit, Lure, Suche) aus der URL übernehmen
 applyAdminUI();
 renderSeasonBar();
 render();
