@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Shiny War · PokeMMO Team Tracker</title>
+<title>Bober Board · PokeMMO Team Tracker</title>
+<link rel="icon" type="image/png" href="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/400.png">
+<link rel="apple-touch-icon" href="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/shiny/400.png">
 <style>
   :root{
     --bg:#0d1117; --panel:#161b22; --panel2:#1c2230; --border:#2b3444;
@@ -19,6 +21,14 @@
   h1{margin:0;font-size:26px;letter-spacing:.5px}
   h1 .spark{color:var(--accent)}
   .sub{color:var(--muted);font-size:13px;margin-top:4px}
+  .topbar{display:flex;align-items:center;justify-content:center;gap:18px;padding:12px 20px;
+    background:linear-gradient(180deg,#1a2434,#12161f);border-bottom:1px solid var(--border)}
+  .topbar .brand{text-align:center}
+  .topbar .mascot{width:62px;height:62px;object-fit:contain;flex:0 0 auto;
+    filter:drop-shadow(0 0 7px rgba(255,210,63,.55));animation:shinyGlow 2.6s ease-in-out infinite}
+  .topbar .mascot.flip{transform:scaleX(-1)}
+  @keyframes shinyGlow{0%,100%{filter:drop-shadow(0 0 5px rgba(255,210,63,.35))}50%{filter:drop-shadow(0 0 11px rgba(122,216,255,.75))}}
+  @media(max-width:560px){.topbar .mascot.flip{display:none}.topbar .mascot{width:48px;height:48px}}
   .wrap{max-width:1080px;margin:0 auto;padding:0 16px 60px}
   .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:center;margin:16px 0}
   .btn{background:var(--panel2);border:1px solid var(--border);color:var(--text);
@@ -159,9 +169,13 @@
 </style>
 </head>
 <body>
-<header>
-  <h1><span class="spark">✦</span> Shiny War <span class="spark">✦</span></h1>
-  <div class="sub">PokeMMO Team-Tracker · Horden · Spezies-Split · Punkte-Leaderboard</div>
+<header class="topbar">
+  <img class="mascot" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/shiny/400.png" alt="Shiny Bidifas" title="Shiny Bidifas" onerror="this.onerror=null;this.src='https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/400.png'">
+  <div class="brand">
+    <h1><span class="spark">✦</span> Bober Board <span class="spark">✦</span></h1>
+    <div class="sub">PokeMMO Team-Tracker · Horden · Leaderboard · Statistik</div>
+  </div>
+  <img class="mascot flip" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/shiny/400.png" alt="" aria-hidden="true" onerror="this.onerror=null;this.src='https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/400.png'">
 </header>
 
 <div class="wrap">
