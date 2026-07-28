@@ -87,6 +87,8 @@
   .season.active[data-s="herbst"]{background:#ff9f45}
   .season.active[data-s="winter"]{background:#8fd3ff}
   .season.timechip.active{background:#b98cff;color:#10141c;border-color:transparent}
+  .season.methchip{padding:5px 11px;font-size:12.5px}
+  .season.methchip.active{background:var(--accent2);color:#10141c;border-color:transparent}
   .hcard{position:relative;border:1px solid var(--border);border-radius:11px;padding:14px;margin-bottom:12px;background:var(--panel2)}
   .hcard.ranked{padding-left:46px}
   .chartwrap{overflow-x:auto;margin:6px 0 2px}
@@ -977,6 +979,7 @@ function writeUrl(){
     if(LURE_ON) p.set("lure","1");
     if(SEARCH) p.set("s",SEARCH);
     if(LSEARCH) p.set("loc",LSEARCH);
+    if(MFILTER) p.set("m",MFILTER);
     const url=location.pathname+"?"+p.toString()+(location.hash||"");
     history.replaceState(null,"",url);
   }catch(e){}
@@ -990,6 +993,7 @@ function readUrl(){
     if(p.has("lure")){ LURE_ON=p.get("lure")==="1"; try{localStorage.setItem("sw_lure",LURE_ON?"1":"0")}catch(e){} }
     const s=p.get("s"); if(s!=null) SEARCH=s;
     const l=p.get("loc"); if(l!=null) LSEARCH=l;
+    const mf=p.get("m"); if(["horde5","horde3","angeln","single"].includes(mf)) MFILTER=mf;
     // Tab-Markierung an den URL-Zustand angleichen
     document.querySelectorAll(".tab").forEach(el=>el.classList.toggle("active",el.dataset.tab===TAB));
   }catch(e){}
@@ -1258,9 +1262,11 @@ function effExpValue(hd){ return activeMembers(hd).reduce((s,m)=>s+m.frac*effPoi
 let ED=null; // Editor-Status: null=zu, sonst {id, draft}
 let SEARCH="";  // Pokémon-Suche (filtert Horden)
 let LSEARCH=""; // Orts-/Region-Suche
+let MFILTER=""; // Methoden-Filter: ""=alle | horde5 | horde3 | angeln | single
 function hordeLocKey(hd){return norm(hd.loc||"")+"|"+norm(hd.region||"");}
 function setLocSearch(v){LSEARCH=v;applyHordeFilter();}
-function clearAllSearch(){SEARCH="";LSEARCH="";render();}
+function setMethodFilter(v){MFILTER=(MFILTER===v?"":v);render();}
+function clearAllSearch(){SEARCH="";LSEARCH="";MFILTER="";render();}
 
 /* Alle Such-Tokens einer Species: Name, DE, EN + ganze Entwicklungslinie */
 function specTokens(name){
@@ -1279,8 +1285,12 @@ function searchBarHTML(){
     <input id="hordeSearch" list="specList" class="name-input" style="width:200px" placeholder="🔎 Pokémon…" value="${esc(SEARCH)}" oninput="setHordeSearch(this.value)" onchange="commitSearch(this.value)">
     <input id="locSearch" list="locList" class="name-input" style="width:200px" placeholder="🗺️ Ort / Region…" value="${esc(LSEARCH)}" oninput="setLocSearch(this.value)">
     <label class="lure-lbl" title="Lure-Encounter (5%) einblenden" style="align-self:center"><input type="checkbox" ${LURE_ON?"checked":""} onchange="setLure(this.checked)"> ${LURE_ICON} Lure anzeigen</label>
-    ${(SEARCH||LSEARCH)?`<button class="btn" onclick="clearAllSearch()">✕ Filter löschen</button>`:""}
+    ${(SEARCH||LSEARCH||MFILTER)?`<button class="btn" onclick="clearAllSearch()">✕ Filter löschen</button>`:""}
     <span class="ktag" id="hordeCount"></span>
+    <div style="flex-basis:100%;height:0"></div>
+    <span style="align-self:center;font-size:12px;color:var(--muted);margin-right:2px">Methode:</span>
+    <div class="season methchip ${MFILTER===''?'active':''}" onclick="setMethodFilter('')">Alle</div>
+    ${METHODS.map(([k,l])=>`<div class="season methchip ${MFILTER===k?'active':''}" onclick="setMethodFilter('${k}')">${l}</div>`).join("")}
   </div>`;
 }
 function setHordeSearch(v){SEARCH=v;applyHordeFilter();}
@@ -1323,10 +1333,11 @@ function applyHordeFilter(){
     total++;
     const okS=!q||(c.dataset.spec||"").includes(q);
     const okL=!lq||(c.dataset.loc||"").includes(lq);
-    const show=okS&&okL;
+    const okM=!MFILTER||(c.dataset.method||"")===MFILTER;
+    const show=okS&&okL&&okM;
     c.style.display=show?"":"none"; if(show)vis++;
   });
-  if(cnt) cnt.textContent = (q||lq) ? (vis+" Fundort"+(vis===1?"":"e")) : (total+" Horden");
+  if(cnt) cnt.textContent = (q||lq||MFILTER) ? (vis+" Fundort"+(vis===1?"":"e")) : (total+" Horden");
 }
 
 function renderLoc(){
@@ -1361,7 +1372,7 @@ function renderHordeCard(hd,edit){
   const totalMembers=(hd.members||[]).length;
   const mem=activeMembers(hd);
   const ev=effExpValue(hd);
-  let h=`<div class="hcard ranked" data-spec="${esc(hordeSpec(hd))}" data-loc="${esc(hordeLocKey(hd))}" style="${habStyle(hd)}">
+  let h=`<div class="hcard ranked" data-spec="${esc(hordeSpec(hd))}" data-loc="${esc(hordeLocKey(hd))}" data-method="${methodOf(hd)}" style="${habStyle(hd)}">
     ${rankBadgeHTML(hd)}
     <h3>📍 ${esc(hd.loc||"—")} ${hd.region?`<span class="ktag">${esc(hd.region)}</span>`:""} ${methodBadge(hd)} ${habBadge(hd)} ${levelBadge(hd)}
       ${edit?`<span class="hactions">
