@@ -89,6 +89,12 @@
   .season.timechip.active{background:#b98cff;color:#10141c;border-color:transparent}
   .season.methchip{padding:5px 11px;font-size:12.5px}
   .season.methchip.active{background:var(--accent2);color:#10141c;border-color:transparent}
+  .ulink{cursor:pointer;color:var(--accent2);border-bottom:1px dotted var(--accent2)}
+  .ulink:hover{color:var(--text);border-bottom-color:var(--text)}
+  .chip.ulink{border-bottom:none;color:inherit}
+  .chip.ulink:hover{border-color:var(--accent2);color:var(--text)}
+  .ubest{display:flex;flex-direction:column;gap:5px;margin-top:6px}
+  .ubrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:6px 10px}
   .hcard{position:relative;border:1px solid var(--border);border-radius:11px;padding:14px;margin-bottom:12px;background:var(--panel2)}
   .hcard.ranked{padding-left:46px}
   .chartwrap{overflow-x:auto;margin:6px 0 2px}
@@ -912,8 +918,13 @@ function activeList(){
    ============================================================ */
 const view=document.getElementById("view");
 let TAB="loc";
+let USER_ID=null; // aktuell geöffnete Spieler-Detailseite
 let CEDIT=null; // Index des Fangs, der gerade bearbeitet wird (Admin)
 function showTab(t){TAB=t;document.querySelectorAll(".tab").forEach(el=>el.classList.toggle("active",el.dataset.tab===t));renderSeasonBar();render();}
+function openUser(id){ USER_ID=String(id); TAB="user";
+  document.querySelectorAll(".tab").forEach(el=>el.classList.remove("active"));
+  renderSeasonBar(); render(); window.scrollTo({top:0,behavior:"smooth"}); }
+function userLink(id){ return `<span class="ulink" onclick="openUser('${String(id)}')" title="Spieler-Details öffnen">${esc(uname(id))}</span>`; }
 
 /* ============================================================
    "JETZT GERADE" — Saison & Tageszeit aus Echtzeit/Ingame-Zeit
@@ -980,6 +991,7 @@ function writeUrl(){
     if(SEARCH) p.set("s",SEARCH);
     if(LSEARCH) p.set("loc",LSEARCH);
     if(MFILTER) p.set("m",MFILTER);
+    if(TAB==="user"&&USER_ID) p.set("u",USER_ID);
     const url=location.pathname+"?"+p.toString()+(location.hash||"");
     history.replaceState(null,"",url);
   }catch(e){}
@@ -987,7 +999,8 @@ function writeUrl(){
 function readUrl(){
   try{
     const p=new URLSearchParams(location.search);
-    const tb=p.get("tab"); if(["loc","lb","hunt","tier","stats"].includes(tb)) TAB=tb;
+    const tb=p.get("tab"); if(["loc","lb","hunt","tier","stats","user"].includes(tb)) TAB=tb;
+    const uu=p.get("u"); if(uu) USER_ID=uu;
     const se=p.get("season"); if(SEASONS.some(x=>x[0]===se)){ SEASON=se; try{localStorage.setItem("sw_season",se)}catch(e){} }
     const td=p.get("tod"); if(["morgen","tag","nacht"].includes(td)){ TOD=td; try{localStorage.setItem("sw_tod",td)}catch(e){} }
     if(p.has("lure")){ LURE_ON=p.get("lure")==="1"; try{localStorage.setItem("sw_lure",LURE_ON?"1":"0")}catch(e){} }
@@ -1013,6 +1026,7 @@ function render(){
   if(TAB==="hunt") return renderHunt();
   if(TAB==="tier") return renderTierlist();
   if(TAB==="stats") return renderStats();
+  if(TAB==="user") return renderUser();
   if(TAB==="loc") return renderLoc();
 }
 
@@ -1081,7 +1095,7 @@ function renderLeaderboard(){
     const chips=r.catches.map(catchChip).join(" ");
     h+=`<tr>
       <td class="rank ${g}">${r.rank===1?"🥇":r.rank===2?"🥈":r.rank===3?"🥉":r.rank}</td>
-      <td><b>${uname(r.id)}</b>${r.bonusPts?`<br><span class="ktag">inkl. +${r.bonusPts} Bonus</span>`:""}</td>
+      <td><b>${userLink(r.id)}</b>${r.bonusPts?`<br><span class="ktag">inkl. +${r.bonusPts} Bonus</span>`:""}</td>
       <td>${chips||'<span class="ktag">—</span>'}</td>
       <td class="pts">${r.pts}</td></tr>`;
   }
@@ -1103,7 +1117,7 @@ function renderHunt(){
     <table><thead><tr><th>Species</th><th>Tier</th><th>Pkt</th><th>Hunter</th></tr></thead><tbody>`;
   for(const x of list){
     const dup=x.hunters.length>1;
-    const hunters=x.hunters.map(id=>`<span class="chip">${uname(id)}</span>`).join(" ");
+    const hunters=x.hunters.map(id=>`<span class="chip ulink" onclick="openUser('${String(id)}')" title="Spieler-Details öffnen">${esc(uname(id))}</span>`).join(" ");
     h+=`<tr class="${dup?'warnrow':''}">
       <td><span class="spwrap">${icon(x.slug,x.line)} <b>${esc(deName(x.slug,x.line))}</b> ${x.line?`<span class="ktag">${x.line.e}</span>`:""}</span></td>
       <td>${x.line?tierBadge(x.line.t):tierBadge(null)}</td>
@@ -1152,7 +1166,7 @@ function statChartSVG(ev,rows,colorOf){
     const li=s.length-1;
     lines+=`<circle cx="${xs(li).toFixed(1)}" cy="${yScale(s[li]).toFixed(1)}" r="3.2" fill="${col}"/>`;
   });
-  const legend=rows.map(r=>`<span class="stleg"><span class="dot" style="background:${colorOf[r.id]}"></span>${esc(uname(r.id))} <b>${cum[r.id]}</b></span>`).join("");
+  const legend=rows.map(r=>`<span class="stleg"><span class="dot" style="background:${colorOf[r.id]}"></span>${userLink(r.id)} <b>${cum[r.id]}</b></span>`).join("");
   return `<div class="chartwrap"><svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;max-width:${W}px" xmlns="http://www.w3.org/2000/svg">
     ${g}<line x1="${padL}" y1="${H-padB}" x2="${W-padR}" y2="${H-padB}" stroke="var(--border)" stroke-width="1.5"/>${lines}</svg></div>
     <div class="legend" style="justify-content:flex-start">${legend}</div>`;
@@ -1175,7 +1189,7 @@ function renderStats(){
       <div class="tldate">${e.date?esc(e.date):'<span class="ktag">o. Datum</span>'}</div>
       <div class="tldot" style="background:${col}"></div>
       <div class="tlbody"><span class="spwrap">${icon(e.name,e.tier!=null?{t:e.tier,n:[e.name],e:e.e}:null,'sm')} <b>${esc(e.name)}</b> ${badge}${flags}</span>
-        <span class="ktag">·</span> <b style="color:${col}">${esc(e.player)}</b>
+        <span class="ktag">·</span> <b style="color:${col}"><span class="ulink" onclick="openUser('${String(e.id)}')" title="Spieler-Details öffnen">${esc(e.player)}</span></b>
         <b class="pts" style="margin-left:auto">+${e.total}</b></div></div>`;
   }
   tl+=`</div>`;
@@ -1184,6 +1198,70 @@ function renderStats(){
     ${chart}
     <h3 style="margin:20px 0 10px">🕒 Catches-Timeline <span class="ktag">(neueste zuerst)</span></h3>
     ${tl}</div>`;
+}
+
+/* ---------- Spieler-Detailseite ---------- */
+/* Beste Horden für ein Pokémon (über alle Saison/Zeit-Kombis), sortiert nach Bewertung. */
+function bestHordesFor(slug,limit){
+  const q=norm(slug); if(!q) return [];
+  const sS=SEASON,sT=TOD,res=[];
+  for(const hd of HORDES){
+    if(!(hd.members||[]).some(m=>memberMatchesQuery(m,q))) continue; // enthält die Species überhaupt?
+    let best=null;
+    for(const [s] of SEASONS){ for(const [t] of TIMES){
+      SEASON=s;TOD=t;
+      if(!(hd.members||[]).some(m=>activePct(m)>0 && memberMatchesQuery(m,q))) continue;
+      const r=rating(hd);
+      if(!best||r>best.r) best={r,season:s,tod:t};
+    }}
+    if(best) res.push({hd,...best});
+  }
+  SEASON=sS;TOD=sT;
+  res.sort((a,b)=>b.r-a.r);
+  return limit?res.slice(0,limit):res;
+}
+function renderUser(){
+  if(!USER_ID){ TAB="lb"; return renderLeaderboard(); }
+  const id=String(USER_ID), name=uname(id);
+  const {rows}=computeScores();
+  const row=rows.find(r=>r.id===id);
+  const hunts=[];
+  for(const [slug,ids] of Object.entries(DATA.active||{})){
+    if((ids||[]).map(String).includes(id)) hunts.push({slug,line:resolve(slug)});
+  }
+  hunts.sort((a,b)=>((b.line?b.line.p:-1)-(a.line?a.line.p:-1)));
+
+  let h=`<div class="card">
+    <p style="margin:0 0 8px"><button class="btn" onclick="showTab('lb')">← Zurück zum Leaderboard</button></p>
+    <h2>👤 ${esc(name)}</h2>
+    <p class="hint">${row?`Platz <b>${row.rank}</b> · <b>${row.pts} Punkte</b>${row.bonusPts?` <span class="ktag">(inkl. +${row.bonusPts} Bonus)</span>`:""} · ${row.catches.length} Fang${row.catches.length===1?"":"e"}`:"Noch keine Punkte."} · ${hunts.length} aktive Hunt${hunts.length===1?"":"s"}.</p>
+
+    <h3 style="margin:16px 0 8px">🎯 Aktive Hunts & beste Horden</h3>`;
+  if(!hunts.length) h+=`<p class="loc-note">Keine aktiven Hunts in den Bot-Daten.</p>`;
+  for(const hu of hunts){
+    const best=bestHordesFor(hu.slug,3);
+    h+=`<div class="hcard"><h3><span class="spwrap">${icon(hu.slug,hu.line)} <b>${esc(deName(hu.slug,hu.line))}</b> ${hu.line?tierBadge(hu.line.t):tierBadge(null)} ${hu.line?`<span class="ktag">${hu.line.p} Pkt</span>`:""}</span>
+      <button class="btn" style="margin-left:auto;padding:4px 9px;font-size:12px" onclick="gotoHordeSearch('${esc(hu.slug)}')">🗺️ In Horden zeigen</button></h3>`;
+    if(!best.length) h+=`<p class="loc-note">Keine bekannte Horde für dieses Pokémon.</p>`;
+    else{
+      h+=`<div class="ubest">`;
+      for(const b of best){
+        const seas=(SEASONS.find(x=>x[0]===b.season)||["",""])[1];
+        const tl=(TIMES.find(x=>x[0]===b.tod)||["",""])[1];
+        h+=`<div class="ubrow"><span>📍 <b>${esc(b.hd.loc||"—")}</b> ${b.hd.region?`<span class="ktag">${esc(b.hd.region)}</span>`:""} ${methodBadge(b.hd)} ${habBadge(b.hd)}</span>
+          <span class="ktag">beste Kombi: ${seas} · ${tl}</span>
+          <b class="pts" style="margin-left:auto;color:var(--good)">${fmtNum(b.r)}</b></div>`;
+      }
+      h+=`</div>`;
+    }
+    h+=`</div>`;
+  }
+
+  h+=`<h3 style="margin:18px 0 8px">🏆 Fänge</h3>`;
+  if(row&&row.catches.length) h+=`<div>`+row.catches.map(catchChip).join(" ")+`</div>`;
+  else h+=`<p class="loc-note">Noch keine gefangenen Shinys.</p>`;
+  h+=`</div>`;
+  view.innerHTML=h;
 }
 
 /* ---------- Horden-Helfer ---------- */
