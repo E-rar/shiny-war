@@ -1038,11 +1038,11 @@ function userLink(id){ return `<span class="ulink" onclick="openUser('${String(i
    Shiny War startet 01.08.2026 (Woche 1 = Frühling), danach wöchentlich weiter.
    (Konstanten unten anpassbar, falls die Zeit mal minimal driftet.) */
 const IG_ANCHOR_UTC = Date.UTC(2026,6,27,12,0,0); // Ingame 00:00
-const WAR_START_UTC = Date.UTC(2026,7,1,0,0,0);    // 01.08.2026 -> Woche 1 = Frühling
-const SEASON_ORDER  = ["fruehling","sommer","herbst","winter"];
+const WAR_START_UTC = Date.UTC(2026,7,1,0,0,0);    // 01.08.2026 -> Woche 1 = Sommer
+const SEASON_ORDER  = ["sommer","herbst","winter","fruehling"];
 function ingameMinutes(t){ let m=((t-IG_ANCHOR_UTC)/60000)*4; return ((m%1440)+1440)%1440; }
 function todAtHour(h){ if(h>=21||h<4) return "nacht"; if(h<11) return "morgen"; return "tag"; }
-function seasonAtTime(t){ if(t<WAR_START_UTC) return "fruehling"; const w=Math.floor((t-WAR_START_UTC)/(7*864e5)); return SEASON_ORDER[((w%4)+4)%4]; }
+function seasonAtTime(t){ if(t<WAR_START_UTC) return "sommer"; const w=Math.floor((t-WAR_START_UTC)/(7*864e5)); return SEASON_ORDER[((w%4)+4)%4]; }
 function nowState(t){ t=t||Date.now(); const m=ingameMinutes(t), h=Math.floor(m/60);
   const week = t<WAR_START_UTC ? 0 : Math.floor((t-WAR_START_UTC)/(7*864e5))+1;
   return {season:seasonAtTime(t), tod:todAtHour(h), h, min:Math.floor(m%60), week}; }
