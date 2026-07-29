@@ -7,8 +7,10 @@ __pycache__/
 .venv/
 venv/
 
-# Hinweis: hunts.json wird BEWUSST mitversioniert, damit die gehostete Web-App
-# (GitHub Pages) das Leaderboard laden kann. Der Bot pusht sie automatisch (debounced).
+# Zugangsschutz (Variante 2): Klartext-Daten bleiben LOKAL, nur die
+# verschlüsselten *.enc kommen ins Repo. hunts.json.enc wird NICHT ignoriert.
+hunts.json
+hordes.json
 
 # --- OS-Müll ---
 .DS_Store

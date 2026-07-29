@@ -13,11 +13,16 @@ Setup:
 """
 
 import asyncio
+import base64
 import json
 import os
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
+
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 import discord
 from discord import app_commands
@@ -27,7 +32,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 TOKEN = os.getenv("DISCORD_TOKEN")
-DATA_FILE = Path(__file__).parent / "hunts.json"
+DATA_FILE = Path(__file__).parent / "hunts.json"        # Klartext, bleibt LOKAL (gitignored)
+ENC_FILE = Path(__file__).parent / "hunts.json.enc"     # verschlüsselt, DAS kommt ins Repo
+
+# Gemeinsames Board-Passwort (Zugangsschutz Variante 2). Muss identisch zum sein,
+# was Nutzer in der Web-App eingeben. Der Bot verschlüsselt damit hunts.json.enc
+# und verteilt es per /zugang. Ohne Passwort wird NICHT verschlüsselt (Setup-Modus).
+BOARD_PASSWORD = os.getenv("BOARD_PASSWORD", "")
 
 # ID des Text-Channels, in dem der Bot ausschließlich reagieren soll.
 # 0 = Einschränkung deaktiviert (Bot reagiert überall).
@@ -85,9 +96,26 @@ def load_data() -> dict:
     return data
 
 
+def encrypt_json(obj: dict, password: str) -> dict:
+    """AES-GCM 256, Schlüssel via PBKDF2-SHA256 (200k). Format exakt wie die Web-App:
+    {"v":1,"salt":<b64>,"iv":<b64>,"ct":<b64>} mit ct = ciphertext+GCM-Tag."""
+    salt = os.urandom(16)
+    iv = os.urandom(12)
+    kdf = PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=salt, iterations=200000)
+    key = kdf.derive(password.encode("utf-8"))
+    ct = AESGCM(key).encrypt(iv, json.dumps(obj, ensure_ascii=False).encode("utf-8"), None)
+    b64 = lambda b: base64.b64encode(b).decode("ascii")
+    return {"v": 1, "salt": b64(salt), "iv": b64(iv), "ct": b64(ct)}
+
+
 def save_data(data: dict) -> None:
+    # Klartext lokal (privat, wird NICHT ins Repo committet)
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
+    # Verschlüsselte Fassung fürs Repo (nur wenn ein Board-Passwort gesetzt ist)
+    if BOARD_PASSWORD:
+        with open(ENC_FILE, "w", encoding="utf-8") as f:
+            json.dump(encrypt_json(data, BOARD_PASSWORD), f)
 
 
 # ---------------------------------------------------------------------------
@@ -103,12 +131,13 @@ _push_task = None
 def _run_git_push() -> None:
     """Blockierender Git-Teil (läuft in einem Thread, damit der Bot nicht hängt)."""
     try:
-        subprocess.run(["git", "add", "hunts.json"], cwd=REPO_DIR, check=True)
+        # Nur die VERSCHLÜSSELTE Datei ins Repo (die Klartext-hunts.json bleibt lokal/gitignored).
+        subprocess.run(["git", "add", "hunts.json.enc"], cwd=REPO_DIR, check=True)
         # Nur committen, wenn es tatsächlich Änderungen gibt.
         if subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=REPO_DIR).returncode == 0:
             return
         stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
-        subprocess.run(["git", "commit", "-m", f"Update hunts.json ({stamp})"], cwd=REPO_DIR, check=True)
+        subprocess.run(["git", "commit", "-m", f"Update hunts.json.enc ({stamp})"], cwd=REPO_DIR, check=True)
         subprocess.run(["git", "push"], cwd=REPO_DIR, check=True)
         print("✅ hunts.json ins Repo gepusht.")
     except Exception as e:
@@ -422,6 +451,29 @@ async def caughtlist(interaction: discord.Interaction):
         text = text[:1900] + "\n… (Liste gekürzt, es gibt noch mehr Einträge)"
 
     await interaction.response.send_message(text)
+
+
+@bot.tree.command(name="zugang", description="Bekomme das Passwort für das Bober Board (per DM).")
+async def zugang(interaction: discord.Interaction):
+    if not BOARD_PASSWORD:
+        await interaction.response.send_message(
+            "Es ist noch kein Board-Passwort eingerichtet.", ephemeral=True
+        )
+        return
+    try:
+        await interaction.user.send(
+            "🔒 **Bober Board – Zugang**\n"
+            f"Passwort: `{BOARD_PASSWORD}`\n"
+            "Öffne die Seite und gib es einmal ein. Bitte nicht weitergeben 🙂"
+        )
+        await interaction.response.send_message(
+            "📩 Ich hab dir das Passwort per DM geschickt!", ephemeral=True
+        )
+    except discord.Forbidden:
+        await interaction.response.send_message(
+            "❌ Ich kann dir keine DM schicken – bitte erlaube Direktnachrichten von Server-Mitgliedern und versuch es nochmal.",
+            ephemeral=True,
+        )
 
 
 if __name__ == "__main__":

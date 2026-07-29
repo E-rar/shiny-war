@@ -21,6 +21,15 @@
   h1{margin:0;font-size:26px;letter-spacing:.5px}
   h1 .spark{color:var(--accent)}
   .sub{color:var(--muted);font-size:13px;margin-top:4px}
+  #lock{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(1000px 500px at 50% -10%,#182030,#0b0e13 70%);padding:20px}
+  #lock .lockbox{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:28px 26px;max-width:380px;width:100%;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+  #lock .mascot{width:84px;height:84px;object-fit:contain;filter:drop-shadow(0 0 8px rgba(255,210,63,.5))}
+  #lock h2{margin:10px 0 6px;font-size:20px}
+  #lock p{color:var(--muted);font-size:13px;margin:0 0 16px;line-height:1.5}
+  #lock input{width:100%;box-sizing:border-box;padding:11px 12px;border-radius:9px;border:1px solid var(--border);background:var(--panel2);color:var(--text);font-size:15px;margin-bottom:10px}
+  #lock .btn.primary{width:100%;padding:11px;font-size:15px}
+  #lock .lockerr{color:var(--bad);font-size:13px;margin-top:10px;min-height:18px}
   .topbar{display:flex;align-items:center;justify-content:center;gap:18px;padding:12px 20px;
     background:linear-gradient(180deg,#1a2434,#12161f);border-bottom:1px solid var(--border)}
   .topbar .brand{text-align:center}
@@ -206,12 +215,24 @@
     <div class="tab" data-tab="stats" onclick="showTab('stats')">📈 Statistik</div>
     <button class="btn" style="margin-left:auto;align-self:center" id="langBtn" onclick="toggleLang()" title="Pokémon-Namen zwischen Deutsch und Englisch umschalten">🌐 <span id="langLbl">DE</span></button>
     <button class="btn" style="align-self:center" onclick="copyShareLink()" title="Aktuellen Link kopieren (Tab, Saison, Zeit, Filter)">🔗 Teilen</button>
+    <button class="btn" style="align-self:center" onclick="forgetPass()" title="Sperren / Passwort ändern">🔒</button>
   </div>
 
   <div id="view"></div>
 </div>
 <div id="toast"></div>
 <button id="toTop" title="Nach oben" aria-label="Nach oben" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+
+<div id="lock">
+  <div class="lockbox">
+    <img class="mascot" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/shiny/400.png" alt="" onerror="this.onerror=null;this.src='https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/400.png'">
+    <h2>🔒 Bober Board</h2>
+    <p>Zugang nur für registrierte Mitglieder. Dein Passwort bekommst du per DM vom <b>Bober-Bot</b>.</p>
+    <input id="lockpass" type="password" autocomplete="current-password" placeholder="Passwort…" onkeydown="if(event.key==='Enter')submitLock()">
+    <button class="btn primary" onclick="submitLock()">Entsperren</button>
+    <div id="lockerr" class="lockerr"></div>
+  </div>
+</div>
 
 <script>
 /* ============================================================
@@ -1731,19 +1752,21 @@ function duplicateHorde(id){
   markHordesEdited(); toast("Kachel dupliziert — jetzt für die andere Ebene anpassen"); render();
 }
 
-function exportHordes(){
-  const blob=new Blob([JSON.stringify({hordes:HORDES},null,2)],{type:"application/json"});
-  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="hordes.json";
-  document.body.appendChild(a);a.click();a.remove();
+function dlBlob(obj,name){const blob=new Blob([JSON.stringify(obj)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();}
+async function exportHordes(){
+  if(!PASS){ toast("Kein Passwort gesetzt — erst entsperren",true); return; }
+  const enc=await encJSON({hordes:HORDES},PASS);
+  dlBlob(enc,"hordes.json.enc");
   setHordesDirty(false); // veröffentlicht -> nicht mehr "dirty"
-  toast("⬇ hordes.json exportiert — jetzt ins Repo committen"); render();
+  toast("⬇ hordes.json.enc (verschlüsselt) — jetzt ins Repo committen"); render();
 }
-function exportHunts(){
-  // IDs wieder als Zahlen ausgeben (bot-kompatibel), inkl. der gesetzten Sonderfall-Flags
-  const t=JSON.stringify(DATA,null,2).replace(/"(\d{16,})"(?!\s*:)/g,'$1');
-  const blob=new Blob([t],{type:"application/json"});
-  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="hunts.json";
-  document.body.appendChild(a);a.click();a.remove();toast("⬇ hunts.json exportiert");
+async function exportHunts(){
+  if(!PASS){ toast("Kein Passwort gesetzt — erst entsperren",true); return; }
+  // IDs wieder als Zahlen (bot-kompatibel), inkl. gesetzter Sonderfall-Flags, dann verschlüsseln
+  const t=JSON.stringify(DATA).replace(/"(\d{16,})"(?!\s*:)/g,'$1');
+  const enc=await encJSON(JSON.parse(t),PASS);
+  dlBlob(enc,"hunts.json.enc");
+  toast("⬇ hunts.json.enc (verschlüsselt) exportiert");
 }
 /* Rohes Horden-Array in HORDES übernehmen (von Import ODER Repo-Auto-Load genutzt) */
 function applyHordes(arr){
@@ -1876,9 +1899,64 @@ function importDumpFile(input){
   r.onerror=()=>{ toast("✗ Datei konnte nicht gelesen werden",true); };
   r.readAsText(f);
 }
+/* ============================================================
+   ZUGANGSSCHUTZ (Variante 2): Daten liegen im Repo NUR verschlüsselt (.enc).
+   Passwort kommt vom Bober-Bot; Entschlüsselung passiert lokal im Browser.
+   AES-GCM 256, Schlüssel via PBKDF2-SHA256 (200k Iterationen). Format:
+   {"v":1,"salt":<b64>,"iv":<b64>,"ct":<b64>}  (ct = ciphertext+GCM-Tag)
+   Dasselbe Format nutzt der Bot in Python -> voll kompatibel.
+   ============================================================ */
+function b64e(buf){let s="";const b=new Uint8Array(buf);for(let i=0;i<b.length;i++)s+=String.fromCharCode(b[i]);return btoa(s);}
+function b64d(str){const s=atob(str);const b=new Uint8Array(s.length);for(let i=0;i<s.length;i++)b[i]=s.charCodeAt(i);return b;}
+async function deriveKey(pass,salt){
+  const km=await crypto.subtle.importKey("raw",new TextEncoder().encode(pass),"PBKDF2",false,["deriveKey"]);
+  return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:200000,hash:"SHA-256"},km,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]);
+}
+async function encJSON(obj,pass){
+  const salt=crypto.getRandomValues(new Uint8Array(16)), iv=crypto.getRandomValues(new Uint8Array(12));
+  const key=await deriveKey(pass,salt);
+  const ct=await crypto.subtle.encrypt({name:"AES-GCM",iv},key,new TextEncoder().encode(JSON.stringify(obj)));
+  return {v:1,salt:b64e(salt),iv:b64e(iv),ct:b64e(ct)};
+}
+async function decEnc(blob,pass){
+  const key=await deriveKey(pass,b64d(blob.salt));
+  const pt=await crypto.subtle.decrypt({name:"AES-GCM",iv:b64d(blob.iv)},key,b64d(blob.ct));
+  return new TextDecoder().decode(pt);
+}
+let PASS=""; try{PASS=localStorage.getItem("sw_pass")||"";}catch(e){}
+function savePass(p){PASS=p;try{localStorage.setItem("sw_pass",p)}catch(e){}}
+function forgetPass(){PASS="";try{localStorage.removeItem("sw_pass")}catch(e){}location.reload();}
+function showLock(msg){const el=document.getElementById("lock");if(el)el.style.display="flex";const e=document.getElementById("lockerr");if(e)e.textContent=msg||"";}
+function hideLock(){const el=document.getElementById("lock");if(el)el.style.display="none";}
+/* "ok" = Passwort entschlüsselt eine vorhandene Datei; "wrong" = Datei da, Passwort falsch;
+   "none" = noch keine verschlüsselten Daten im Repo (Erst-Einrichtung -> Passwort wird gesetzt). */
+async function checkPass(pass){
+  let anyPresent=false;
+  for(const url of [REPO_HUNTS_ENC,REPO_HORDES_ENC]){
+    let r; try{ r=await fetch(url+"?t="+Date.now()); }catch(e){ continue; }
+    if(!r.ok) continue; anyPresent=true;
+    try{ await decEnc(await r.json(),pass); return "ok"; }catch(e){}
+  }
+  return anyPresent?"wrong":"none";
+}
+async function submitLock(){
+  const inp=document.getElementById("lockpass"); const p=inp?inp.value.trim():"";
+  if(!p){ showLock("Bitte Passwort eingeben."); return; }
+  showLock("Prüfe…");
+  const st=await checkPass(p);
+  if(st==="ok"){ savePass(p); hideLock(); loadRepoData(); }
+  else if(st==="none"){ savePass(p); hideLock(); toast("🔑 Passwort gesetzt (noch keine Daten veröffentlicht)"); loadRepoData(); }
+  else showLock("Falsches Passwort.");
+}
+async function startGate(){
+  if(PASS){ const st=await checkPass(PASS); if(st==="ok"||st==="none"){ hideLock(); loadRepoData(); return; } }
+  showLock(PASS?"Passwort ungültig – bitte neu eingeben.":"");
+}
 /* ---- Auto-Load aus dem Repo (GitHub Pages), damit alle denselben Stand sehen ---- */
-const REPO_HORDES_URL="hordes.json"; // liegt im Repo -> wird automatisch geladen
-const REPO_HUNTS_URL="hunts.json";   // nur wenn der Bot sie ins Repo pusht (sonst 404 -> ignoriert)
+const REPO_HORDES_URL="hordes.json"; // Altbestand (Klartext) – nur Fallback
+const REPO_HUNTS_URL="hunts.json";   // Altbestand (Klartext) – nur Fallback
+const REPO_HORDES_ENC="hordes.json.enc"; // verschlüsselt (vom Admin exportiert)
+const REPO_HUNTS_ENC="hunts.json.enc";   // verschlüsselt (vom Bot gepusht)
 const REPO_POKEDB_URL="pokemon_data.json"; // DE+EN+ID+Sprite -> korrekte Bilder & Sprachumschalter
 const REPO_LOCEN_URL="loc_en.json";        // DE->EN Ortsnamen (vom Admin veröffentlicht)
 async function loadRepoData(){
@@ -1889,22 +1967,20 @@ async function loadRepoData(){
   // Orts-Übersetzung (DE->EN) laden, falls im Repo veröffentlicht
   try{ const r=await fetch(REPO_LOCEN_URL+"?t="+Date.now());
     if(r.ok){ const j=await r.json(); if(j&&typeof j==="object"&&!Array.isArray(j)){ Object.assign(LOC_EN,j); saveLocEn(); } } }catch(e){}
-  // Repo-Stand laden, AUSSER es gibt ungespeicherte lokale Änderungen (dirty)
+  // Horden (verschlüsselt) laden, AUSSER es gibt ungespeicherte lokale Änderungen (dirty)
   if(!hordesDirty() && (!ADMIN || !HORDES.length)){
-    try{ const r=await fetch(REPO_HORDES_URL+"?t="+Date.now());
-      if(r.ok){ const j=await r.json(); const arr=Array.isArray(j)?j:(j.hordes||[]); if(arr.length) applyHordes(arr); } }catch(e){}
+    try{ const r=await fetch(REPO_HORDES_ENC+"?t="+Date.now());
+      if(r.ok){ const txt=await decEnc(await r.json(),PASS); const j=JSON.parse(txt); const arr=Array.isArray(j)?j:(j.hordes||[]); if(arr.length) applyHordes(arr); } }catch(e){}
   }
-  // Hunts: immer den neuesten Bot-Stand (falls im Repo veröffentlicht)
-  if(REPO_HUNTS_URL){
-    try{ const r=await fetch(REPO_HUNTS_URL+"?t="+Date.now());
-      if(r.ok){ const j=parseHunts(await r.text()); if(j&&(j.active||j.caught)){ DATA=j; saveData(); if(j.users){Object.assign(NAMES,j.users);saveNames();} } } }catch(e){}
-  }
+  // Hunts (verschlüsselt) – immer der neueste Bot-Stand
+  try{ const r=await fetch(REPO_HUNTS_ENC+"?t="+Date.now());
+    if(r.ok){ const j=parseHunts(await decEnc(await r.json(),PASS)); if(j&&(j.active||j.caught)){ DATA=j; saveData(); if(j.users){Object.assign(NAMES,j.users);saveNames();} } } }catch(e){}
   refreshCaughtLines(); render();
 }
-async function pullRepo(){ // Admin-Button: Repo-Horden manuell laden
-  try{ const r=await fetch(REPO_HORDES_URL+"?t="+Date.now());
-    if(r.ok){ const j=await r.json(); const arr=Array.isArray(j)?j:(j.hordes||[]); applyHordes(arr); ED=null; toast("⟳ "+HORDES.length+" Horden aus Repo geladen"); render(); return; } }catch(e){}
-  toast("✗ Repo-Horden nicht erreichbar",true);
+async function pullRepo(){ // Admin-Button: verschlüsselte Repo-Horden manuell laden
+  try{ const r=await fetch(REPO_HORDES_ENC+"?t="+Date.now());
+    if(r.ok){ const j=JSON.parse(await decEnc(await r.json(),PASS)); const arr=Array.isArray(j)?j:(j.hordes||[]); applyHordes(arr); ED=null; toast("⟳ "+HORDES.length+" Horden aus Repo geladen"); render(); return; } }catch(e){}
+  toast("✗ Repo-Horden nicht erreichbar oder Passwort falsch",true);
 }
 function seedExampleHorde(){
   HORDES.push({id:"h"+Date.now().toString(36),loc:"Beispiel: Route 119",region:"Hoenn",method:"horde5",hab:"gras",
@@ -2029,7 +2105,9 @@ applyAdminUI();
 renderSeasonBar();
 render();
 fetchPkmnIndex(); // holt einmalig Dex-IDs von der PokeAPI für Bilder (danach gecacht)
-loadRepoData();   // holt hordes.json (u. optional hunts.json) automatisch aus dem Repo (GitHub Pages)
+// Zugangsschutz: gehostet -> Passwort-Sperre; lokal geöffnet -> ohne Sperre (aber auch ohne Repo-Daten)
+if(location.protocol.startsWith("http")){ startGate(); }
+else { hideLock(); loadRepoData(); }
 setInterval(updateNowInfo,30000); // Ingame-Uhr in der Season-Bar live halten
 
 /* Nach-oben-Button: sichtbar ab 1,5 Bildschirmhöhen Scroll */
