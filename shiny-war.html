@@ -1727,20 +1727,32 @@ function convertMonsterDump(arr){
   }
   return out;
 }
+/* Parsen + Umwandeln + Anwenden. o = bereits geparstes JSON. Gibt true zurück, wenn es ein Dump war. */
+function runDumpImport(o){
+  // Wrapper wie {monsters:[...]} oder {data:[...]} zulassen
+  const arr = Array.isArray(o) ? o : (o && (o.monsters||o.data||o.mons)) || null;
+  if(!isMonsterDump(arr)){
+    const n = Array.isArray(arr)?arr.length:0;
+    throw new Error("kein Monster-Dump erkannt (Array-Länge "+n+", kein Eintrag mit 'locations')");
+  }
+  const withLoc = arr.filter(m=>m&&Array.isArray(m.locations)).length;
+  const hordeMons = arr.filter(m=>(m.locations||[]).some(l=>l.is_horde_5x||l.is_horde_3x)).length;
+  const hordes=convertMonsterDump(arr);
+  if(!hordes.length) throw new Error(withLoc+" Mons mit Locations, aber 0 Horden (is_horde_5x/3x). Feldname im Dump abweichend?");
+  applyHordes(hordes); setHordesDirty(true); ED=null;
+  const mem=hordes.reduce((s,h)=>s+h.members.length,0);
+  toast("🐾 "+hordes.length+" Horden · "+mem+" Einträge (aus "+hordeMons+" Horden-Mons)");
+  render(); return true;
+}
 function importDumpFile(input){
   const f=input.files[0]; if(!f) return; input.value="";
-  toast("⏳ Verarbeite Dump…");
+  toast("⏳ Verarbeite Dump… ("+Math.round(f.size/1024)+" KB)");
   const r=new FileReader();
-  r.onload=()=>{ try{
-    const o=JSON.parse(r.result);
-    if(!isMonsterDump(o)) throw new Error("kein Monster-Dump (Array mit 'locations')");
-    const hordes=convertMonsterDump(o);
-    if(!hordes.length) throw new Error("keine Horden im Dump gefunden");
-    applyHordes(hordes); setHordesDirty(true); ED=null;
-    const mem=hordes.reduce((s,h)=>s+h.members.length,0);
-    toast("🐾 "+hordes.length+" Horden ("+mem+" Einträge) aus Dump erzeugt");
-    render();
-  }catch(e){ toast("✗ Dump-Import fehlgeschlagen: "+e.message,true); } };
+  r.onload=()=>{ let o; try{ o=JSON.parse(r.result); }
+    catch(e){ toast("✗ JSON kaputt/kein JSON: "+e.message,true); return; }
+    try{ runDumpImport(o); }
+    catch(e){ toast("✗ Dump-Import: "+e.message,true); } };
+  r.onerror=()=>{ toast("✗ Datei konnte nicht gelesen werden",true); };
   r.readAsText(f);
 }
 /* ---- Auto-Load aus dem Repo (GitHub Pages), damit alle denselben Stand sehen ---- */
@@ -1836,7 +1848,9 @@ function handleFile(f){
   const r=new FileReader();
   r.onload=()=>{ try{
       const obj=JSON.parse(quoteBigInts(r.result));
-      if(isPokedb(obj)){
+      if(isMonsterDump(Array.isArray(obj)?obj:(obj&&(obj.monsters||obj.data)))){
+        runDumpImport(obj); setStatus("✓ "+f.name+" (Dump) → Horden","ok");
+      } else if(isPokedb(obj)){
         applyPokedb(obj);
         setStatus("✓ "+f.name+" (Bilder) geladen","ok");
         toast("🖼️ Bilder geladen: "+Object.keys(obj).length+" Einträge");
