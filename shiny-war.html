@@ -1709,9 +1709,20 @@ function dumpSeasons(s){ return DUMP_SEASON_MAP[String(s||"").trim().toLowerCase
 function dumpHab(type){ const t=String(type||"").toLowerCase();
   if(t.includes("dark")&&t.includes("grass")) return "dunkelgras";
   if(t.includes("grass")) return "gras";
-  if(t.includes("water")||t.includes("surf")) return "wasser";
+  if(t.includes("water")||t.includes("surf")||t.includes("angel")||t.includes("rod")||t.includes("fish")) return "wasser";
   if(t.includes("cave")||t.includes("rock")) return "hoehle";
   return ""; }
+/* Kanonische Oberfläche für die Gruppierung (Surfen ≠ Angeln, Gras ≠ Höhle …). */
+function dumpSurface(loc){ const t=String(loc.type||"").toLowerCase();
+  if(t.includes("angel")||t.includes("rod")||t.includes("fish")) return "angeln"; // alle Ruten zusammen
+  if(t.includes("dark")&&t.includes("grass")) return "dunkelgras";
+  if(t.includes("grass")) return "gras";
+  if(t.includes("water")||t.includes("surf")) return "wasser";
+  if(t.includes("cave")) return "hoehle";
+  if(t.includes("rock")) return "rock";
+  if(t.includes("headbutt")) return "headbutt";
+  if(t.includes("inside")) return "inside";
+  return t||"sonst"; }
 function dumpPctNum(str){ const m=String(str==null?"":str).match(/\d+(?:\.\d+)?/g); return m?Math.max(...m.map(Number)):0; }
 function dumpUpper(loc){ return Math.max(dumpPctNum(loc.rarity_morning),dumpPctNum(loc.rarity_day),dumpPctNum(loc.rarity_night)); }
 /* Horde: Dex-Trefferquote -> Anteil (deine Vorgabe: ×20). Single/Angeln: echte Dex-% direkt. */
@@ -1722,8 +1733,8 @@ function dumpMethod(loc){
   if(loc.is_horde_5x) return "horde5";
   if(loc.is_horde_3x) return "horde3";
   const t=String(loc.type||"").toLowerCase();
-  if(t.includes("water")||t.includes("surf")||t.includes("rod")||t.includes("fish")) return "angeln";
-  return "single";
+  if(t.includes("angel")||t.includes("rod")||t.includes("fish")) return "angeln"; // Angel/Profiangel/Super Rod
+  return "single"; // inkl. "Water" = Surfen (Single auf dem Wasser)
 }
 /* Zusatz-Notiz für Typen ohne eigenen Untergrund (Headbutt/Inside/Rock Smash). */
 function dumpTypeNote(type){ const t=String(type||""); return /headbutt|inside|rock/i.test(t)?t:""; }
@@ -1740,7 +1751,8 @@ function convertMonsterDump(arr){
       const isHorde=method==="horde5"||method==="horde3";
       const region=loc.region_name||loc.region||"";
       const place=loc.location_name_full||loc.location_name||loc.location||"";
-      const key=region+"|"+place+"|"+method;
+      const surface=dumpSurface(loc); // Surfen ≠ Angeln, Gras ≠ Höhle … getrennt halten
+      const key=region+"|"+place+"|"+method+"|"+surface;
       let spot=spots.get(key);
       if(!spot){ spot={loc:place,region,method,hab:dumpHab(loc.type),typeNote:dumpTypeNote(loc.type),members:new Map(),levels:new Set()}; spots.set(key,spot); }
       let mem=spot.members.get(name);
