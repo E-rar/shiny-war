@@ -204,7 +204,8 @@
     <div class="tab active" data-tab="loc" onclick="showTab('loc')">🗺️ Horden</div>
     <div class="tab" data-tab="tier" onclick="showTab('tier')">📋 Tierlist</div>
     <div class="tab" data-tab="stats" onclick="showTab('stats')">📈 Statistik</div>
-    <button class="btn" style="margin-left:auto;align-self:center" onclick="copyShareLink()" title="Aktuellen Link kopieren (Tab, Saison, Zeit, Filter)">🔗 Teilen</button>
+    <button class="btn" style="margin-left:auto;align-self:center" id="langBtn" onclick="toggleLang()" title="Pokémon-Namen zwischen Deutsch und Englisch umschalten">🌐 <span id="langLbl">DE</span></button>
+    <button class="btn" style="align-self:center" onclick="copyShareLink()" title="Aktuellen Link kopieren (Tab, Saison, Zeit, Filter)">🔗 Teilen</button>
   </div>
 
   <div id="view"></div>
@@ -659,13 +660,18 @@ function labelText(name){
   return l.de||l.en||"";
 }
 function canonSpecies(name){const rec=POKEDB[norm(name)];if(rec&&rec.name_de)return cap(rec.name_de);return cap(name);}
-function memName(name){return speciesLabels(name).de||cap(name);}
-/* Deutscher Anzeigename: spezifische Stufe aus POKEDB, sonst deutscher Basisname der Linie */
+/* Anzeigename in der aktiven Sprache (LANG), spezifische Entwicklungsstufe. */
+function spName(name){const l=speciesLabels(name);return LANG==="en"?(l.en||l.de||cap(name)):(l.de||l.en||cap(name));}
+function memName(name){return spName(name);}
+/* Sprachabhängiger Anzeigename: spezifische Stufe aus POKEDB, sonst Basisname der Linie */
 function deName(slug,line){
   const rec=POKEDB[norm(slug)];
-  if(rec&&rec.name_de) return cap(rec.name_de);
-  return line?line.n[0]:displayName(slug);
+  if(rec){ const nm=LANG==="en"?(rec.name_en||rec.name_de):(rec.name_de||rec.name_en); if(nm) return cap(nm); }
+  if(line) return LANG==="en"?cap(line.e):line.n[0];
+  return displayName(slug);
 }
+/* Basisname einer Linie in der aktiven Sprache (für die Tierlist). */
+function lineName(l){return LANG==="en"?cap(l.e):l.n[0];}
 function icon(name,line,size){
   const s=spriteFor(name);
   if(s) return `<img class="spr${size==='sm'?' spr-sm':''}" src="${s}" alt="" loading="lazy">`;
@@ -832,6 +838,12 @@ function todIcon(t){return t==="morgen"?"🌅":t==="tag"?"☀️":t==="nacht"?"�
 let LURE_ON=loadLure();
 function loadLure(){try{return localStorage.getItem("sw_lure")==="1"}catch(e){return false}}
 function setLure(v){LURE_ON=!!v;try{localStorage.setItem("sw_lure",LURE_ON?"1":"0")}catch(e){}render();}
+/* Anzeigesprache der Pokémon-Namen: "de" | "en" */
+let LANG=loadLang();
+function loadLang(){try{return localStorage.getItem("sw_lang")==="en"?"en":"de"}catch(e){return"de"}}
+function setLang(v){LANG=(v==="en"?"en":"de");try{localStorage.setItem("sw_lang",LANG)}catch(e){}updateLangBtn();renderSeasonBar();render();}
+function toggleLang(){setLang(LANG==="de"?"en":"de");}
+function updateLangBtn(){const el=document.getElementById("langLbl");if(el)el.textContent=LANG.toUpperCase();}
 
 /* Horden: manuell pflegbar, Prozent-Vorkommen je Saison
    {id, loc, region, note, members:[{name, s:{fruehling,sommer,herbst,winter}}]} */
@@ -1013,6 +1025,7 @@ function writeUrl(){
     if(SEARCH) p.set("s",SEARCH);
     if(LSEARCH) p.set("loc",LSEARCH);
     if(MFILTER) p.set("m",MFILTER);
+    if(LANG==="en") p.set("lang","en");
     if(TAB==="user"&&USER_ID) p.set("u",USER_ID);
     const url=location.pathname+"?"+p.toString()+(location.hash||"");
     history.replaceState(null,"",url);
@@ -1029,6 +1042,7 @@ function readUrl(){
     const s=p.get("s"); if(s!=null) SEARCH=s;
     const l=p.get("loc"); if(l!=null) LSEARCH=l;
     const mf=p.get("m"); if(["horde5","horde3","angeln","single"].includes(mf)) MFILTER=mf;
+    const lg=p.get("lang"); if(lg==="en"||lg==="de"){ LANG=lg; try{localStorage.setItem("sw_lang",LANG)}catch(e){} }
     // Tab-Markierung an den URL-Zustand angleichen
     document.querySelectorAll(".tab").forEach(el=>el.classList.toggle("active",el.dataset.tab===TAB));
   }catch(e){}
@@ -1532,11 +1546,12 @@ function renderTierlist(){
     h+=`<div class="hcard" style="border-color:${col};box-shadow:inset 5px 0 0 ${col}">
       <h3><span class="badge" style="background:${col};color:#10141c">Tier ${t}</span> <span style="color:${col};font-weight:700">${pts} Punkte</span> <span class="ktag">· ${cc}/${lines.length} gefangen</span></h3>
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">`;
-    for(const l of lines.slice().sort((a,b)=>a.n[0].localeCompare(b.n[0]))){
+    for(const l of lines.slice().sort((a,b)=>lineName(a).localeCompare(lineName(b)))){
+      const nm=lineName(l), alt=LANG==="en"?l.n[0]:cap(l.e);
       if(CAUGHT_LINES.has(norm(l.e))){
-        h+=`<span class="chip tl-done" title="vom Team gefangen"><span class="spwrap"><span style="color:var(--good);font-weight:800">✓</span> ${icon(l.n[0],l,'sm')} <s>${esc(l.n[0])}</s></span></span>`;
+        h+=`<span class="chip tl-done" title="vom Team gefangen"><span class="spwrap"><span style="color:var(--good);font-weight:800">✓</span> ${icon(l.n[0],l,'sm')} <s>${esc(nm)}</s></span></span>`;
       }else{
-        h+=`<span class="chip tl-open" data-n="${esc(l.n[0])}" onclick="gotoHordeSearch(this.dataset.n)" title="Zu den Horden – beste Fundorte anzeigen"><span class="spwrap">${icon(l.n[0],l,'sm')} ${esc(l.n[0])} <span class="ktag">${esc(l.e)}</span></span></span>`;
+        h+=`<span class="chip tl-open" data-n="${esc(l.n[0])}" onclick="gotoHordeSearch(this.dataset.n)" title="Zu den Horden – beste Fundorte anzeigen"><span class="spwrap">${icon(l.n[0],l,'sm')} ${esc(nm)} <span class="ktag">${esc(alt)}</span></span></span>`;
       }
     }
     h+=`</div></div>`;
@@ -1784,6 +1799,10 @@ function runDumpImport(o){
     throw new Error("kein Monster-Dump erkannt (Array-Länge "+n+", kein Eintrag mit 'locations')");
   }
   const withLoc = arr.filter(m=>m&&Array.isArray(m.locations)).length;
+  // IDs/Namen aus dem Dump in POKEDB übernehmen -> korrekte Sprites je Art (nicht Basis-Entwicklung)
+  let enriched=0;
+  arr.forEach(m=>{ if(m&&m.name&&m.id){ const k=norm(m.name); if(!POKEDB[k]){ POKEDB[k]={id:m.id,name_de:m.name,name_en:""}; enriched++; } } });
+  if(enriched){ savePokedb(); }
   const spots=convertMonsterDump(arr);
   if(!spots.length) throw new Error(withLoc+" Mons mit Locations, aber 0 Spots erzeugt. Feldnamen im Dump abweichend?");
   applyHordes(spots); setHordesDirty(true); ED=null;
@@ -1807,8 +1826,12 @@ function importDumpFile(input){
 /* ---- Auto-Load aus dem Repo (GitHub Pages), damit alle denselben Stand sehen ---- */
 const REPO_HORDES_URL="hordes.json"; // liegt im Repo -> wird automatisch geladen
 const REPO_HUNTS_URL="hunts.json";   // nur wenn der Bot sie ins Repo pusht (sonst 404 -> ignoriert)
+const REPO_POKEDB_URL="pokemon_data.json"; // DE+EN+ID+Sprite -> korrekte Bilder & Sprachumschalter
 async function loadRepoData(){
   if(!location.protocol.startsWith("http")) return; // lokal per Datei geöffnet -> kein Auto-Load
+  // Bilder-/Namens-DB (DE+EN) laden, falls im Repo -> korrekte Sprites & Sprachumschalter
+  try{ const r=await fetch(REPO_POKEDB_URL+"?t="+Date.now());
+    if(r.ok){ const j=await r.json(); if(isPokedb(j)){ applyPokedb(j); } } }catch(e){}
   // Repo-Stand laden, AUSSER es gibt ungespeicherte lokale Änderungen (dirty)
   if(!hordesDirty() && (!ADMIN || !HORDES.length)){
     try{ const r=await fetch(REPO_HORDES_URL+"?t="+Date.now());
@@ -1865,7 +1888,7 @@ function isPokedb(obj){
   return v && typeof v==="object" && ("sprite" in v || "name_de" in v);
 }
 function applyPokedb(obj){
-  POKEDB={};
+  // In vorhandene POKEDB mergen (überschreibt gleiche Keys, behält Dump-Anreicherung anderer Arten)
   for(const [k,rec] of Object.entries(obj)){
     POKEDB[norm(k)]=rec;
     if(rec.name_de) POKEDB[norm(rec.name_de)]=rec;
@@ -1943,7 +1966,8 @@ buildSpeciesOptions();
 buildLocOptions();
 ensureDatalists();
 refreshCaughtLines();
-readUrl();        // Deeplink-Zustand (Tab, Saison, Zeit, Lure, Suche) aus der URL übernehmen
+readUrl();        // Deeplink-Zustand (Tab, Saison, Zeit, Lure, Suche, Sprache) aus der URL übernehmen
+updateLangBtn();  // DE/EN-Button auf aktuellen Stand setzen
 applyAdminUI();
 renderSeasonBar();
 render();
