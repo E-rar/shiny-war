@@ -119,6 +119,10 @@
   .rankno{position:absolute;top:10px;left:8px;width:30px;text-align:center;font-weight:800;font-size:15px;color:var(--muted);line-height:1.1}
   .rankno small{display:block;font-size:8px;font-weight:600;letter-spacing:.5px;color:var(--muted);opacity:.7}
   .rankno.top1{color:#ffd23f}.rankno.top2{color:#c7d0da}.rankno.top3{color:#e0965a}
+  .rankspark{display:block;font-size:11px;line-height:1;animation:bestGlow 2.2s ease-in-out infinite}
+  .hcard.best{outline:2px solid #3fb950;outline-offset:1px;animation:bestGlow 2.2s ease-in-out infinite}
+  @keyframes bestGlow{0%,100%{outline-color:#3fb950;filter:drop-shadow(0 0 4px rgba(63,185,80,.4))}50%{outline-color:#ffd23f;filter:drop-shadow(0 0 13px rgba(255,210,63,.75))}}
+  .bestcombo{display:inline-flex;align-items:center;gap:5px;background:rgba(63,185,80,.14);border:1px solid var(--good);color:var(--good);border-radius:8px;padding:2px 8px;font-size:12px;font-weight:600}
   .hcard h3{margin:0 0 2px;font-size:15px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .hcard .loc-note{color:var(--muted);font-size:12.5px;margin:0 0 10px}
   .hactions{margin-left:auto;display:flex;gap:6px}
@@ -1318,7 +1322,15 @@ function computeHordeRanks(){
 function rankBadgeHTML(hd){
   const r=HORDE_RANKS[hd.id]; if(!r) return "";
   const cls=r<=3?" top"+r:"";
-  return `<span class="rankno${cls}" title="Platz ${r} nach Bewertung (gesamt)"><small>PLATZ</small>${r}</span>`;
+  const spark=r===1?'<span class="rankspark">✨</span>':'';
+  return `<span class="rankno${cls}" title="Platz ${r} nach Bewertung (gesamt)">${spark}<small>PLATZ</small>${r}</span>`;
+}
+/* Beste Saison+Tageszeit-Kombi einer einzelnen Horde (für die Hervorhebung der Top-Horde). */
+function bestComboForHorde(hd){
+  const sS=SEASON,sT=TOD; let best=null;
+  for(const [s] of SEASONS){ for(const [t] of TIMES){ SEASON=s; TOD=t;
+    const r=rating(hd); if(!best||r>best.r) best={r,season:s,tod:t}; } }
+  SEASON=sS; TOD=sT; return best;
 }
 function fmtNum(n){return Math.round(n).toLocaleString("de-DE");}
 function pctOf(m){ if(!m.s) return 0;
@@ -1472,9 +1484,14 @@ function renderHordeCard(hd,edit){
   const totalMembers=(hd.members||[]).length;
   const mem=activeMembers(hd);
   const ev=effExpValue(hd);
-  let h=`<div class="hcard ranked" data-spec="${esc(hordeSpec(hd))}" data-loc="${esc(hordeLocKey(hd))}" data-method="${methodOf(hd)}" style="${habStyle(hd)}">
+  const isBest=HORDE_RANKS[hd.id]===1;
+  let combo="";
+  if(isBest){ const b=bestComboForHorde(hd);
+    if(b){ const sl=(SEASONS.find(x=>x[0]===b.season)||["","?"])[1]; const tlab=(TIMES.find(x=>x[0]===b.tod)||["",""])[1];
+      combo=`<span class="bestcombo" title="Beste Bewertung dieser Horde">✨ Beste Kombi: ${sl} · ${tlab}</span>`; } }
+  let h=`<div class="hcard ranked${isBest?' best':''}" data-spec="${esc(hordeSpec(hd))}" data-loc="${esc(hordeLocKey(hd))}" data-method="${methodOf(hd)}" style="${habStyle(hd)}">
     ${rankBadgeHTML(hd)}
-    <h3>📍 ${esc(hd.loc||"—")} ${hd.region?`<span class="ktag">${esc(hd.region)}</span>`:""} ${methodBadge(hd)} ${habBadge(hd)} ${levelBadge(hd)}
+    <h3>📍 ${esc(hd.loc||"—")} ${hd.region?`<span class="ktag">${esc(hd.region)}</span>`:""} ${methodBadge(hd)} ${habBadge(hd)} ${levelBadge(hd)} ${combo}
       ${edit?`<span class="hactions">
         ${habSelect(hd.id,hd.hab)}
         <button class="btn" style="padding:4px 9px;font-size:12px" onclick="duplicateHorde('${hd.id}')" title="Kachel für weitere Ebene duplizieren">⧉ Splitten</button>
