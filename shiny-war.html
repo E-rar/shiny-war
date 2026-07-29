@@ -844,6 +844,56 @@ function loadLang(){try{return localStorage.getItem("sw_lang")==="en"?"en":"de"}
 function setLang(v){LANG=(v==="en"?"en":"de");try{localStorage.setItem("sw_lang",LANG)}catch(e){}updateLangBtn();renderSeasonBar();render();}
 function toggleLang(){setLang(LANG==="de"?"en":"de");}
 function updateLangBtn(){const el=document.getElementById("langLbl");if(el)el.textContent=LANG.toUpperCase();}
+/* Regionen DE->EN (nur Einall weicht ab). Ortsnamen via LOC_EN (aus EN-Dump befüllbar). */
+const REGION_EN={einall:"Unova",kanto:"Kanto",johto:"Johto",hoenn:"Hoenn",sinnoh:"Sinnoh"};
+function trRegion(r){ if(LANG!=="en"||!r) return r||""; return REGION_EN[norm(r)]||r; }
+function loadLS(k){try{return JSON.parse(localStorage.getItem(k)||"{}")}catch(e){return{}}}
+function saveLS(k,o){try{localStorage.setItem(k,JSON.stringify(o))}catch(e){}}
+let LOC_EN=loadLS("sw_locen");          // norm(DE-Ortsname) -> EN-Ortsname (für die Anzeige)
+let LOC_ID_DE=loadLS("sw_locid_de");    // location_id -> DE-Name (aus dem deutschen Dump)
+let LOC_ID_EN=loadLS("sw_locid_en");    // location_id -> EN-Name (aus dem englischen Dump)
+function saveLocEn(){saveLS("sw_locen",LOC_EN);}
+function trLoc(name){ if(LANG!=="en"||!name) return name||""; return LOC_EN[norm(name)]||name; }
+/* Sprache eines Dumps erkennen (Einall = DE, Unova = EN). */
+function dumpLang(arr){
+  for(const m of arr){ for(const l of (m.locations||[])){ const r=norm(l.region_name); if(r==="unova")return"en"; if(r==="einall")return"de"; } }
+  return "de";
+}
+/* location_id -> Ortsname für eine Sprache erfassen. */
+function harvestLocIds(arr,lang){
+  const map=lang==="en"?LOC_ID_EN:LOC_ID_DE;
+  for(const m of arr){ for(const l of (m.locations||[])){ if(l.location_id!=null){ const nm=l.location_name_full||l.location_name; if(nm) map[l.location_id]=nm; } } }
+  saveLS(lang==="en"?"sw_locid_en":"sw_locid_de",map);
+}
+/* DE->EN Ortskarte aus den beiden id-Karten neu bauen. */
+function rebuildLocEn(){
+  LOC_EN={};
+  for(const id in LOC_ID_EN){ const de=LOC_ID_DE[id]; if(de && LOC_ID_EN[id]) LOC_EN[norm(de)]=LOC_ID_EN[id]; }
+  saveLocEn();
+  return Object.keys(LOC_EN).length;
+}
+function exportLocEn(){
+  if(!Object.keys(LOC_EN).length) return;
+  const blob=new Blob([JSON.stringify(LOC_EN)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="loc_en.json";
+  document.body.appendChild(a);a.click();a.remove();
+}
+function importLocFile(input){
+  const f=input.files[0]; if(!f) return; input.value="";
+  toast("⏳ Orts-Übersetzung… ("+Math.round(f.size/1024)+" KB)");
+  const r=new FileReader();
+  r.onload=()=>{ let o; try{ o=JSON.parse(stripBadCtrl(r.result)); }
+    catch(e){ toast("✗ JSON kaputt: "+e.message,true); return; }
+    const arr=Array.isArray(o)?o:(o&&(o.monsters||o.data));
+    if(!isMonsterDump(arr)){ toast("✗ kein Monster-Dump",true); return; }
+    const lang=dumpLang(arr); harvestLocIds(arr,lang);
+    const pairs=rebuildLocEn();
+    if(pairs){ toast("🌐 "+lang.toUpperCase()+"-Orte erfasst · "+pairs+" Übersetzungen — loc_en.json wird geladen"); exportLocEn(); }
+    else toast("🌐 "+lang.toUpperCase()+"-Orte erfasst — jetzt noch den "+(lang==="en"?"deutschen":"englischen")+" Dump laden");
+    render();
+  };
+  r.readAsText(f);
+}
 
 /* Horden: manuell pflegbar, Prozent-Vorkommen je Saison
    {id, loc, region, note, members:[{name, s:{fruehling,sommer,herbst,winter}}]} */
@@ -1284,7 +1334,7 @@ function renderUser(){
       for(const b of best){
         const seas=(SEASONS.find(x=>x[0]===b.season)||["",""])[1];
         const tl=(TIMES.find(x=>x[0]===b.tod)||["",""])[1];
-        h+=`<div class="ubrow"><span>📍 <b>${esc(b.hd.loc||"—")}</b> ${b.hd.region?`<span class="ktag">${esc(b.hd.region)}</span>`:""} ${methodBadge(b.hd)} ${habBadge(b.hd)}</span>
+        h+=`<div class="ubrow"><span>📍 <b>${esc(trLoc(b.hd.loc)||"—")}</b> ${b.hd.region?`<span class="ktag">${esc(trRegion(b.hd.region))}</span>`:""} ${methodBadge(b.hd)} ${habBadge(b.hd)}</span>
           <span class="ktag">beste Kombi: ${seas} · ${tl}</span>
           <b class="pts" style="margin-left:auto;color:var(--good)">${fmtNum(b.r)}</b></div>`;
       }
@@ -1474,6 +1524,8 @@ function renderLoc(){
       <input type="file" id="hordefile" accept=".json" style="display:none" onchange="importHordes(this)">
       <button class="btn" onclick="document.getElementById('dumpfile').click()" title="PokeMMO monsters.json (In-Game-Dump) → Horden, Angeln & Singles erzeugen">🐾 Dump importieren</button>
       <input type="file" id="dumpfile" accept=".json" style="display:none" onchange="importDumpFile(this)">
+      <button class="btn" onclick="document.getElementById('locfile').click()" title="DE- und EN-monsters.json laden (je einmal) → Ortsnamen-Übersetzung erzeugen">🌐 Orts-Übersetzung</button>
+      <input type="file" id="locfile" accept=".json" style="display:none" onchange="importLocFile(this)">
       <button class="btn" onclick="exportHordes()">⬇ Export</button>
       <button class="btn" onclick="pullRepo()" title="Aktuelle hordes.json aus dem Repo laden">⟳ Repo laden</button>
       ${HORDES.length?`<button class="btn" style="color:var(--bad);border-color:var(--bad)" onclick="clearAllHordes()" title="Alle Horden lokal löschen">🗑 Alle löschen</button>`:'<button class="btn" onclick="seedExampleHorde()">Beispiel einfügen</button>'}
@@ -1505,7 +1557,7 @@ function renderHordeCard(hd,edit){
       combo=`<span class="bestcombo" title="Beste Bewertung dieser Horde">✨ Beste Kombi: ${sl} · ${tlab}</span>`; } }
   let h=`<div class="hcard ranked${isBest?' best':''}" data-spec="${esc(hordeSpec(hd))}" data-loc="${esc(hordeLocKey(hd))}" data-method="${methodOf(hd)}" style="${habStyle(hd)}">
     ${rankBadgeHTML(hd)}
-    <h3>📍 ${esc(hd.loc||"—")} ${hd.region?`<span class="ktag">${esc(hd.region)}</span>`:""} ${methodBadge(hd)} ${habBadge(hd)} ${levelBadge(hd)} ${combo}
+    <h3>📍 ${esc(trLoc(hd.loc)||"—")} ${hd.region?`<span class="ktag">${esc(trRegion(hd.region))}</span>`:""} ${methodBadge(hd)} ${habBadge(hd)} ${levelBadge(hd)} ${combo}
       ${edit?`<span class="hactions">
         ${habSelect(hd.id,hd.hab)}
         <button class="btn" style="padding:4px 9px;font-size:12px" onclick="duplicateHorde('${hd.id}')" title="Kachel für weitere Ebene duplizieren">⧉ Splitten</button>
@@ -1803,6 +1855,7 @@ function runDumpImport(o){
   let enriched=0;
   arr.forEach(m=>{ if(m&&m.name&&m.id){ const k=norm(m.name); if(!POKEDB[k]){ POKEDB[k]={id:m.id,name_de:m.name,name_en:""}; enriched++; } } });
   if(enriched){ savePokedb(); }
+  harvestLocIds(arr,dumpLang(arr)); rebuildLocEn(); // Orts-IDs dieses Dumps für die Übersetzung merken
   const spots=convertMonsterDump(arr);
   if(!spots.length) throw new Error(withLoc+" Mons mit Locations, aber 0 Spots erzeugt. Feldnamen im Dump abweichend?");
   applyHordes(spots); setHordesDirty(true); ED=null;
@@ -1827,11 +1880,15 @@ function importDumpFile(input){
 const REPO_HORDES_URL="hordes.json"; // liegt im Repo -> wird automatisch geladen
 const REPO_HUNTS_URL="hunts.json";   // nur wenn der Bot sie ins Repo pusht (sonst 404 -> ignoriert)
 const REPO_POKEDB_URL="pokemon_data.json"; // DE+EN+ID+Sprite -> korrekte Bilder & Sprachumschalter
+const REPO_LOCEN_URL="loc_en.json";        // DE->EN Ortsnamen (vom Admin veröffentlicht)
 async function loadRepoData(){
   if(!location.protocol.startsWith("http")) return; // lokal per Datei geöffnet -> kein Auto-Load
   // Bilder-/Namens-DB (DE+EN) laden, falls im Repo -> korrekte Sprites & Sprachumschalter
   try{ const r=await fetch(REPO_POKEDB_URL+"?t="+Date.now());
     if(r.ok){ const j=await r.json(); if(isPokedb(j)){ applyPokedb(j); } } }catch(e){}
+  // Orts-Übersetzung (DE->EN) laden, falls im Repo veröffentlicht
+  try{ const r=await fetch(REPO_LOCEN_URL+"?t="+Date.now());
+    if(r.ok){ const j=await r.json(); if(j&&typeof j==="object"&&!Array.isArray(j)){ Object.assign(LOC_EN,j); saveLocEn(); } } }catch(e){}
   // Repo-Stand laden, AUSSER es gibt ungespeicherte lokale Änderungen (dirty)
   if(!hordesDirty() && (!ADMIN || !HORDES.length)){
     try{ const r=await fetch(REPO_HORDES_URL+"?t="+Date.now());
