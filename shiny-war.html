@@ -1748,10 +1748,10 @@ function importDumpFile(input){
   const f=input.files[0]; if(!f) return; input.value="";
   toast("⏳ Verarbeite Dump… ("+Math.round(f.size/1024)+" KB)");
   const r=new FileReader();
-  r.onload=()=>{ let o; try{ o=JSON.parse(r.result); }
-    catch(e){ toast("✗ JSON kaputt/kein JSON: "+e.message,true); return; }
+  r.onload=()=>{ let o; try{ o=JSON.parse(stripBadCtrl(r.result)); }
+    catch(e){ console.error("Dump JSON.parse:",e); toast("✗ JSON kaputt/kein JSON: "+e.message,true); return; }
     try{ runDumpImport(o); }
-    catch(e){ toast("✗ Dump-Import: "+e.message,true); } };
+    catch(e){ console.error("Dump-Import:",e); toast("✗ Dump-Import: "+e.message,true); } };
   r.onerror=()=>{ toast("✗ Datei konnte nicht gelesen werden",true); };
   r.readAsText(f);
 }
@@ -1841,13 +1841,17 @@ function setStatus(msg,cls){
 /* Discord-IDs (18–19-stellig) übersteigen JS-Zahlgenauigkeit -> vor dem Parsen in Strings wandeln,
    damit user_id exakt bleibt und zum "users"-Feld passt. */
 function quoteBigInts(t){ return String(t).replace(/(?<!["\d])(\d{16,})(?!["\d])/g, '"$1"'); }
-function parseHunts(t){ return JSON.parse(quoteBigInts(t)); }
+/* PokeMMO-Dumps enthalten rohe Steuerzeichen (Icon-Platzhalter in Item-Namen),
+   die JSON.parse mit "bad control character in string literal" abstürzen lassen.
+   Struktur-Whitespace (Tab \x09, LF \x0A, CR \x0D) bleibt erhalten. */
+function stripBadCtrl(t){ return String(t).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g,""); }
+function parseHunts(t){ return JSON.parse(quoteBigInts(stripBadCtrl(t))); }
 
 function handleFile(f){
   if(!ADMIN){ toast("Upload nur im Admin-Modus möglich",true); return; }
   const r=new FileReader();
   r.onload=()=>{ try{
-      const obj=JSON.parse(quoteBigInts(r.result));
+      const obj=JSON.parse(quoteBigInts(stripBadCtrl(r.result)));
       if(isMonsterDump(Array.isArray(obj)?obj:(obj&&(obj.monsters||obj.data)))){
         runDumpImport(obj); setStatus("✓ "+f.name+" (Dump) → Horden","ok");
       } else if(isPokedb(obj)){
