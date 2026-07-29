@@ -1440,6 +1440,8 @@ function renderLoc(){
       <button class="btn primary" onclick="openNewHorde()">+ Neue Horde</button>
       <button class="btn" onclick="document.getElementById('hordefile').click()">⬆ Import</button>
       <input type="file" id="hordefile" accept=".json" style="display:none" onchange="importHordes(this)">
+      <button class="btn" onclick="document.getElementById('dumpfile').click()" title="PokeMMO monsters.json (In-Game-Dump) → Horden erzeugen">🐾 Dump → Horden</button>
+      <input type="file" id="dumpfile" accept=".json" style="display:none" onchange="importDumpFile(this)">
       <button class="btn" onclick="exportHordes()">⬇ Export</button>
       <button class="btn" onclick="pullRepo()" title="Aktuelle hordes.json aus dem Repo laden">⟳ Repo laden</button>
       ${HORDES.length?`<button class="btn" style="color:var(--bad);border-color:var(--bad)" onclick="clearAllHordes()" title="Alle Horden lokal löschen">🗑 Alle löschen</button>`:'<button class="btn" onclick="seedExampleHorde()">Beispiel einfügen</button>'}
@@ -1673,6 +1675,72 @@ function importHordes(input){
     if(!Array.isArray(arr))throw new Error("kein hordes-Array gefunden");
     applyHordes(arr);ED=null;toast("⬆ "+HORDES.length+" Horden importiert");render();
   }catch(e){toast("✗ Import fehlgeschlagen: "+e.message,true);}};
+  r.readAsText(f);
+}
+
+/* ===== PokeMMO-Monster-Dump (monsters.json) -> Horden ===================== */
+/* Erkennt den In-Game-Dump: Array von Mons, jedes mit "locations" (is_horde_5x/3x). */
+function isMonsterDump(o){ return Array.isArray(o) && o.some(m=>m && Array.isArray(m.locations)); }
+const DUMP_SEASON_MAP={spring:["fruehling"],summer:["sommer"],autumn:["herbst"],fall:["herbst"],winter:["winter"],any:["fruehling","sommer","herbst","winter"],all:["fruehling","sommer","herbst","winter"],"":["fruehling","sommer","herbst","winter"]};
+function dumpSeasons(s){ return DUMP_SEASON_MAP[String(s||"").trim().toLowerCase()]||["fruehling","sommer","herbst","winter"]; }
+function dumpHab(type){ const t=String(type||"").toLowerCase();
+  if(t.includes("dark")&&t.includes("grass")) return "dunkelgras";
+  if(t.includes("grass")) return "gras";
+  if(t.includes("water")||t.includes("surf")) return "wasser";
+  if(t.includes("cave")||t.includes("rock")) return "hoehle";
+  return ""; }
+function dumpPctNum(str){ const m=String(str==null?"":str).match(/\d+(?:\.\d+)?/g); return m?Math.max(...m.map(Number)):0; }
+/* Dex-Trefferquote der Horde -> Anteil in der Horde (deine Vorgabe: ×20, gedeckelt 100). */
+function dumpHordePct(loc){ const up=Math.max(dumpPctNum(loc.rarity_morning),dumpPctNum(loc.rarity_day),dumpPctNum(loc.rarity_night)); return Math.min(100,Math.round(up*20)); }
+function dumpIsLure(loc){ return /lure/i.test(String(loc.rarity_morning)+loc.rarity_day+loc.rarity_night) || Number(loc.rarity_flags)===256; }
+function dumpTod(loc){ const m=dumpPctNum(loc.rarity_morning)>0,d=dumpPctNum(loc.rarity_day)>0,n=dumpPctNum(loc.rarity_night)>0;
+  if(m&&d&&n) return "immer"; if(n&&!d&&!m) return "nacht"; if(m&&!d&&!n) return "morgen"; if(d&&!n) return "tag"; return "immer"; }
+function dumpCombineTod(a,b){ return (a==null||a===b)?b:"immer"; }
+function convertMonsterDump(arr){
+  const spots=new Map(); // key region|loc|method -> {loc,region,method,hab,members:Map, levels:Set}
+  for(const mon of arr){
+    const name=(mon&&mon.name||"").trim(); if(!name) continue;
+    for(const loc of (mon.locations||[])){
+      if(!(loc.is_horde_5x||loc.is_horde_3x)) continue;               // nur Horden
+      const method=loc.is_horde_3x?"horde3":"horde5";
+      const region=loc.region_name||loc.region||"";
+      const place=loc.location_name_full||loc.location_name||loc.location||"";
+      const key=region+"|"+place+"|"+method;
+      let spot=spots.get(key);
+      if(!spot){ spot={loc:place,region,method,hab:dumpHab(loc.type),members:new Map(),levels:new Set()}; spots.set(key,spot); }
+      let mem=spot.members.get(name);
+      if(!mem){ mem={name,s:{},tod:null,lure:false}; spot.members.set(name,mem); }
+      const pct=dumpHordePct(loc);
+      for(const se of dumpSeasons(loc.season)) mem.s[se]=Math.max(mem.s[se]||0,pct);
+      mem.tod=dumpCombineTod(mem.tod,dumpTod(loc));
+      if(dumpIsLure(loc)) mem.lure=true;
+      if(loc.min_level!=null&&loc.max_level!=null) spot.levels.add(loc.min_level+"-"+loc.max_level);
+    }
+  }
+  const out=[];
+  for(const spot of spots.values()){
+    const members=[...spot.members.values()].map(m=>({name:m.name,s:m.s,tod:m.tod||"immer",lure:!!m.lure}));
+    if(!members.length) continue;
+    let note="";
+    if(spot.levels.size){ let lo=Infinity,hi=-Infinity; spot.levels.forEach(r=>{const[a,b]=r.split("-").map(Number);lo=Math.min(lo,a);hi=Math.max(hi,b);}); note=lo===hi?("Lv "+lo):("Lv "+lo+"-"+hi); }
+    out.push({loc:spot.loc,region:spot.region,method:spot.method,hab:spot.hab,level:"",note,members});
+  }
+  return out;
+}
+function importDumpFile(input){
+  const f=input.files[0]; if(!f) return; input.value="";
+  toast("⏳ Verarbeite Dump…");
+  const r=new FileReader();
+  r.onload=()=>{ try{
+    const o=JSON.parse(r.result);
+    if(!isMonsterDump(o)) throw new Error("kein Monster-Dump (Array mit 'locations')");
+    const hordes=convertMonsterDump(o);
+    if(!hordes.length) throw new Error("keine Horden im Dump gefunden");
+    applyHordes(hordes); setHordesDirty(true); ED=null;
+    const mem=hordes.reduce((s,h)=>s+h.members.length,0);
+    toast("🐾 "+hordes.length+" Horden ("+mem+" Einträge) aus Dump erzeugt");
+    render();
+  }catch(e){ toast("✗ Dump-Import fehlgeschlagen: "+e.message,true); } };
   r.readAsText(f);
 }
 /* ---- Auto-Load aus dem Repo (GitHub Pages), damit alle denselben Stand sehen ---- */
