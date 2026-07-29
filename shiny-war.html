@@ -1442,7 +1442,7 @@ function renderLoc(){
       <input type="file" id="hordefile" accept=".json" style="display:none" onchange="importHordes(this)">
       <button class="btn" onclick="exportHordes()">⬇ Export</button>
       <button class="btn" onclick="pullRepo()" title="Aktuelle hordes.json aus dem Repo laden">⟳ Repo laden</button>
-      ${HORDES.length?"":'<button class="btn" onclick="seedExampleHorde()">Beispiel einfügen</button>'}
+      ${HORDES.length?`<button class="btn" style="color:var(--bad);border-color:var(--bad)" onclick="clearAllHordes()" title="Alle Horden lokal löschen">🗑 Alle löschen</button>`:'<button class="btn" onclick="seedExampleHorde()">Beispiel einfügen</button>'}
     </div>`:""}`;
   if(ADMIN && hordesDirty()) h+=`<p class="hint" style="color:var(--warn);margin:0 0 10px">⚠ Ungespeicherte lokale Änderungen — mit <b>⬇ Export</b> herunterladen, in den Repo-Ordner legen und committen, damit alle sie sehen. („⟳ Repo laden" verwirft sie.)</p>`;
   if(ADMIN && ED && !ED.id) h+=hordeEditorHTML(); // neue Horde: Editor oben
@@ -1626,6 +1626,11 @@ function saveHorde(){
 }
 function deleteHorde(id){const hd=HORDES.find(h=>h.id===id);if(!confirm("Horde \""+(hd?hd.loc:"")+"\" löschen?"))return;
   HORDES=HORDES.filter(h=>h.id!==id);markHordesEdited();toast("Horde gelöscht");render();}
+function clearAllHordes(){
+  if(!HORDES.length){toast("Keine Horden vorhanden");return;}
+  if(!confirm("Wirklich ALLE "+HORDES.length+" Horden löschen? (Nur lokal – zum Teilen danach Export & commit.)"))return;
+  HORDES=[];ED=null;markHordesEdited();toast("Alle Horden gelöscht – jetzt neu eintragen");render();
+}
 function duplicateHorde(id){
   const i=HORDES.findIndex(h=>h.id===id); if(i<0) return;
   const copy=JSON.parse(JSON.stringify(HORDES[i]));
