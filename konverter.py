@@ -23,12 +23,21 @@ Aufruf:
 Danach in der App (Admin) "⬆ Import" -> hordes.json, oder direkt ins Repo
 committen (die App lädt es automatisch).
 
-⚠️  OFFENE PUNKTE (beim echten Release kurz prüfen/anpassen):
-  - RARITY_FLAGS: Bedeutung der Bits (Lure? Safari?) ist noch unklar -> unten
-    in flags_to_extras() anpassen.
-  - HORDE-TYP: Wie heißt der "type" für Horden genau ("Horde", "Horde 5" …)
-    und woher kommt die Größe (3/5)? -> map_type() anpassen.
-  - Season-Namen (Spring/Summer/Autumn/Winter vs. Frühling…) -> SEASON_MAP.
+Aus dem Dex-Screenshot (Stand Update) bestätigt:
+  - Saison-Tabs: Spring / Summer / Autumn / Winter  -> SEASON_MAP passt.
+  - Spalten: Type · Region · Location · Levels · Morning/Day/Night.
+  - Häufigkeiten sind teils Bereiche ('0-2.5%', '0-30%') -> rarity_to_pct nimmt
+    jetzt die Obergrenze.
+  - HORDEN sind mit einem kleinen Sprite-Cluster-ICON neben dem Type markiert
+    (z.B. "Cave" + Icon = Horde, "Cave" ohne Icon = Single). Der Horde-Status
+    steckt also in einem FLAG, nicht im Type-Text -> is_horde_loc() unten.
+
+⚠️  BEIM ECHTEN JSON-DUMP KURZ PRÜFEN/ANPASSEN:
+  - Wie heißt das Horde-Flag im JSON genau? (is_horde? horde? Bit in
+    rarity_flags?)  -> is_horde_loc() an den echten Feldnamen anpassen.
+  - Horden-GRÖSSE 3 vs 5: falls das JSON sie enthält -> in convert() nutzen,
+    sonst Default horde5.
+  - RARITY_FLAGS: Bedeutung der Bits (Lure? Safari?) -> flags_to_extras().
 """
 
 import argparse
@@ -98,12 +107,36 @@ def flags_to_extras(flags):
     return {"lure": lure}
 
 
+# Ist dieser Location-Eintrag eine Horde? (Im Dex durch das Sprite-Cluster-Icon
+# markiert.) Wir prüfen mehrere plausible Feldnamen — sobald der echte JSON-Dump
+# da ist, den zutreffenden behalten/anpassen.
+FLAG_HORDE = 0  # TODO: falls Horde ein Bit in rarity_flags ist -> hier setzen
+def is_horde_loc(loc):
+    for key in ("is_horde", "horde", "is_horde_encounter"):
+        if loc.get(key):
+            return True
+    t = str(loc.get("type") or "").lower()
+    if "horde" in t:
+        return True
+    if FLAG_HORDE:
+        try:
+            if int(loc.get("rarity_flags") or 0) & FLAG_HORDE:
+                return True
+        except (TypeError, ValueError):
+            pass
+    return False
+
+
 def rarity_to_pct(val):
-    """'1%' -> 1 ; '12 %' -> 12 ; '-'/None -> 0"""
+    """'1%' -> 1 ; '12 %' -> 12 ; '-'/None -> 0.
+    Bereiche aus dem Dex (z.B. '0-2.5%', '0-30%', '0-10%') -> Obergrenze als
+    repräsentativer Wert (also 3, 30, 10). En-Dash '–' wird mit abgedeckt."""
     if val is None:
         return 0
-    m = re.search(r"(\d+(?:\.\d+)?)", str(val))
-    return round(float(m.group(1))) if m else 0
+    nums = re.findall(r"\d+(?:\.\d+)?", str(val))
+    if not nums:
+        return 0
+    return round(max(float(n) for n in nums))
 
 
 def loc_pct(loc):
@@ -152,6 +185,8 @@ def convert(pokemon_list):
             continue
         for loc in mon.get("locations", []) or []:
             method, hab, note_extra = map_type(loc.get("type"))
+            if is_horde_loc(loc):
+                method = "horde5"  # Default; 3er-Horden ggf. aus JSON ableiten
             region = loc.get("region_name") or loc.get("region") or ""
             place = loc.get("location") or ""
             key = (region, place, method)
