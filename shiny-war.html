@@ -1458,7 +1458,7 @@ function renderLoc(){
       <button class="btn primary" onclick="openNewHorde()">+ Neue Horde</button>
       <button class="btn" onclick="document.getElementById('hordefile').click()">⬆ Import</button>
       <input type="file" id="hordefile" accept=".json" style="display:none" onchange="importHordes(this)">
-      <button class="btn" onclick="document.getElementById('dumpfile').click()" title="PokeMMO monsters.json (In-Game-Dump) → Horden erzeugen">🐾 Dump → Horden</button>
+      <button class="btn" onclick="document.getElementById('dumpfile').click()" title="PokeMMO monsters.json (In-Game-Dump) → Horden, Angeln & Singles erzeugen">🐾 Dump importieren</button>
       <input type="file" id="dumpfile" accept=".json" style="display:none" onchange="importDumpFile(this)">
       <button class="btn" onclick="exportHordes()">⬇ Export</button>
       <button class="btn" onclick="pullRepo()" title="Aktuelle hordes.json aus dem Repo laden">⟳ Repo laden</button>
@@ -1713,8 +1713,20 @@ function dumpHab(type){ const t=String(type||"").toLowerCase();
   if(t.includes("cave")||t.includes("rock")) return "hoehle";
   return ""; }
 function dumpPctNum(str){ const m=String(str==null?"":str).match(/\d+(?:\.\d+)?/g); return m?Math.max(...m.map(Number)):0; }
-/* Dex-Trefferquote der Horde -> Anteil in der Horde (deine Vorgabe: ×20, gedeckelt 100). */
-function dumpHordePct(loc){ const up=Math.max(dumpPctNum(loc.rarity_morning),dumpPctNum(loc.rarity_day),dumpPctNum(loc.rarity_night)); return Math.min(100,Math.round(up*20)); }
+function dumpUpper(loc){ return Math.max(dumpPctNum(loc.rarity_morning),dumpPctNum(loc.rarity_day),dumpPctNum(loc.rarity_night)); }
+/* Horde: Dex-Trefferquote -> Anteil (deine Vorgabe: ×20). Single/Angeln: echte Dex-% direkt. */
+function dumpHordePct(loc){ return Math.min(100,Math.round(dumpUpper(loc)*20)); }
+function dumpSinglePct(loc){ return Math.min(100,Math.round(dumpUpper(loc))); }
+/* Encounter-Methode aus dem Location-Eintrag. Wasser = Angeln (Dump trennt Surf/Rod nicht). */
+function dumpMethod(loc){
+  if(loc.is_horde_5x) return "horde5";
+  if(loc.is_horde_3x) return "horde3";
+  const t=String(loc.type||"").toLowerCase();
+  if(t.includes("water")||t.includes("surf")||t.includes("rod")||t.includes("fish")) return "angeln";
+  return "single";
+}
+/* Zusatz-Notiz für Typen ohne eigenen Untergrund (Headbutt/Inside/Rock Smash). */
+function dumpTypeNote(type){ const t=String(type||""); return /headbutt|inside|rock/i.test(t)?t:""; }
 function dumpIsLure(loc){ return /lure/i.test(String(loc.rarity_morning)+loc.rarity_day+loc.rarity_night) || Number(loc.rarity_flags)===256; }
 function dumpTod(loc){ const m=dumpPctNum(loc.rarity_morning)>0,d=dumpPctNum(loc.rarity_day)>0,n=dumpPctNum(loc.rarity_night)>0;
   if(m&&d&&n) return "immer"; if(n&&!d&&!m) return "nacht"; if(m&&!d&&!n) return "morgen"; if(d&&!n) return "tag"; return "immer"; }
@@ -1724,16 +1736,16 @@ function convertMonsterDump(arr){
   for(const mon of arr){
     const name=(mon&&mon.name||"").trim(); if(!name) continue;
     for(const loc of (mon.locations||[])){
-      if(!(loc.is_horde_5x||loc.is_horde_3x)) continue;               // nur Horden
-      const method=loc.is_horde_3x?"horde3":"horde5";
+      const method=dumpMethod(loc);
+      const isHorde=method==="horde5"||method==="horde3";
       const region=loc.region_name||loc.region||"";
       const place=loc.location_name_full||loc.location_name||loc.location||"";
       const key=region+"|"+place+"|"+method;
       let spot=spots.get(key);
-      if(!spot){ spot={loc:place,region,method,hab:dumpHab(loc.type),members:new Map(),levels:new Set()}; spots.set(key,spot); }
+      if(!spot){ spot={loc:place,region,method,hab:dumpHab(loc.type),typeNote:dumpTypeNote(loc.type),members:new Map(),levels:new Set()}; spots.set(key,spot); }
       let mem=spot.members.get(name);
       if(!mem){ mem={name,s:{},tod:null,lure:false}; spot.members.set(name,mem); }
-      const pct=dumpHordePct(loc);
+      const pct=isHorde?dumpHordePct(loc):dumpSinglePct(loc);
       for(const se of dumpSeasons(loc.season)) mem.s[se]=Math.max(mem.s[se]||0,pct);
       mem.tod=dumpCombineTod(mem.tod,dumpTod(loc));
       if(dumpIsLure(loc)) mem.lure=true;
@@ -1744,9 +1756,10 @@ function convertMonsterDump(arr){
   for(const spot of spots.values()){
     const members=[...spot.members.values()].map(m=>({name:m.name,s:m.s,tod:m.tod||"immer",lure:!!m.lure}));
     if(!members.length) continue;
-    let note="";
-    if(spot.levels.size){ let lo=Infinity,hi=-Infinity; spot.levels.forEach(r=>{const[a,b]=r.split("-").map(Number);lo=Math.min(lo,a);hi=Math.max(hi,b);}); note=lo===hi?("Lv "+lo):("Lv "+lo+"-"+hi); }
-    out.push({loc:spot.loc,region:spot.region,method:spot.method,hab:spot.hab,level:"",note,members});
+    const parts=[];
+    if(spot.typeNote) parts.push(spot.typeNote);
+    if(spot.levels.size){ let lo=Infinity,hi=-Infinity; spot.levels.forEach(r=>{const[a,b]=r.split("-").map(Number);lo=Math.min(lo,a);hi=Math.max(hi,b);}); parts.push(lo===hi?("Lv "+lo):("Lv "+lo+"-"+hi)); }
+    out.push({loc:spot.loc,region:spot.region,method:spot.method,hab:spot.hab,level:"",note:parts.join(" · "),members});
   }
   return out;
 }
@@ -1759,12 +1772,13 @@ function runDumpImport(o){
     throw new Error("kein Monster-Dump erkannt (Array-Länge "+n+", kein Eintrag mit 'locations')");
   }
   const withLoc = arr.filter(m=>m&&Array.isArray(m.locations)).length;
-  const hordeMons = arr.filter(m=>(m.locations||[]).some(l=>l.is_horde_5x||l.is_horde_3x)).length;
-  const hordes=convertMonsterDump(arr);
-  if(!hordes.length) throw new Error(withLoc+" Mons mit Locations, aber 0 Horden (is_horde_5x/3x). Feldname im Dump abweichend?");
-  applyHordes(hordes); setHordesDirty(true); ED=null;
-  const mem=hordes.reduce((s,h)=>s+h.members.length,0);
-  toast("🐾 "+hordes.length+" Horden · "+mem+" Einträge (aus "+hordeMons+" Horden-Mons)");
+  const spots=convertMonsterDump(arr);
+  if(!spots.length) throw new Error(withLoc+" Mons mit Locations, aber 0 Spots erzeugt. Feldnamen im Dump abweichend?");
+  applyHordes(spots); setHordesDirty(true); ED=null;
+  const cnt={horde5:0,horde3:0,angeln:0,single:0};
+  spots.forEach(s=>{cnt[s.method]=(cnt[s.method]||0)+1;});
+  const mem=spots.reduce((s,h)=>s+h.members.length,0);
+  toast("✓ "+spots.length+" Spots · "+mem+" Einträge — 🐾"+(cnt.horde5+cnt.horde3)+" Horden · 🎣"+cnt.angeln+" Angeln · 👤"+cnt.single+" Single");
   render(); return true;
 }
 function importDumpFile(input){
