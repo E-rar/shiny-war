@@ -96,6 +96,7 @@
   .season.active[data-s="sommer"]{background:#ffd23f}
   .season.active[data-s="herbst"]{background:#ff9f45}
   .season.active[data-s="winter"]{background:#8fd3ff}
+  .season.active[data-s="all"]{background:#9aa7b8}
   .season.timechip.active{background:#b98cff;color:#10141c;border-color:transparent}
   .season.methchip{padding:5px 11px;font-size:12.5px}
   .season.methchip.active{background:var(--accent2);color:#10141c;border-color:transparent}
@@ -812,10 +813,11 @@ function setSeason(s){if(ED&&document.getElementById("ed_loc"))ED.draft=readEdit
 const TIMES=[["morgen","🌅 Morgen/Mittag"],["tag","☀️ Tag"],["nacht","🌙 Nacht"]];
 const TOD_EDIT=[["immer","Immer"],["morgen","🌅 Morgen/Mittag"],["tag","☀️ Tag"],["nacht","🌙 Nacht"]];
 let TOD=loadTod();
-function loadTod(){try{const v=localStorage.getItem("sw_tod");return (v==="morgen"||v==="tag"||v==="nacht")?v:"tag";}catch(e){return"tag"}}
+function loadTod(){try{const v=localStorage.getItem("sw_tod");return (v==="morgen"||v==="tag"||v==="nacht"||v==="all")?v:"tag";}catch(e){return"tag"}}
 function setTod(v){if(ED&&document.getElementById("ed_loc"))ED.draft=readEditor();TOD=v;try{localStorage.setItem("sw_tod",v)}catch(e){}renderSeasonBar();render();}
 function todMatch(m){
   const t=m.tod||"immer";
+  if(TOD==="all") return true;
   if(t==="immer") return true;
   // "Tag"-Mons kommen auch morgens/mittags vor; nur explizit Morgen-/Nacht-Mons sind beschränkt
   if(TOD==="morgen") return t==="morgen"||t==="tag";
@@ -982,9 +984,11 @@ function renderSeasonBar(){
     `<span id="nowInfo" class="ktag" style="align-self:center;margin:0 6px"></span>`+
     `<div style="flex-basis:100%;height:0"></div>`+
     `<span style="align-self:center;font-size:12px;color:var(--muted);margin-right:4px">Saison:</span>`+
+    `<div class="season ${SEASON==='all'?'active':''}" data-s="all" onclick="setSeason('all')">🗓️ Alle</div>`+
     SEASONS.map(([k,lab])=>`<div class="season ${SEASON===k?'active':''}" data-s="${k}" onclick="setSeason('${k}')">${lab}</div>`).join("")+
     `<div style="flex-basis:100%;height:0"></div>`+
     `<span style="align-self:center;font-size:12px;color:var(--muted);margin-right:4px">Zeit:</span>`+
+    `<div class="season timechip ${TOD==='all'?'active':''}" data-t="all" onclick="setTod('all')">🕓 Alle</div>`+
     TIMES.map(([k,lab])=>`<div class="season timechip ${TOD===k?'active':''}" data-t="${k}" onclick="setTod('${k}')">${lab}</div>`).join("");
   updateNowInfo();
 }
@@ -1015,8 +1019,8 @@ function readUrl(){
     const p=new URLSearchParams(location.search);
     const tb=p.get("tab"); if(["loc","lb","hunt","tier","stats","user"].includes(tb)) TAB=tb;
     const uu=p.get("u"); if(uu) USER_ID=uu;
-    const se=p.get("season"); if(SEASONS.some(x=>x[0]===se)){ SEASON=se; try{localStorage.setItem("sw_season",se)}catch(e){} }
-    const td=p.get("tod"); if(["morgen","tag","nacht"].includes(td)){ TOD=td; try{localStorage.setItem("sw_tod",td)}catch(e){} }
+    const se=p.get("season"); if(se==="all"||SEASONS.some(x=>x[0]===se)){ SEASON=se; try{localStorage.setItem("sw_season",se)}catch(e){} }
+    const td=p.get("tod"); if(["morgen","tag","nacht","all"].includes(td)){ TOD=td; try{localStorage.setItem("sw_tod",td)}catch(e){} }
     if(p.has("lure")){ LURE_ON=p.get("lure")==="1"; try{localStorage.setItem("sw_lure",LURE_ON?"1":"0")}catch(e){} }
     const s=p.get("s"); if(s!=null) SEARCH=s;
     const l=p.get("loc"); if(l!=null) LSEARCH=l;
@@ -1280,7 +1284,7 @@ function renderUser(){
 
 /* ---------- Horden-Helfer ---------- */
 function esc(s){return (s==null?"":String(s)).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
-function seasonLabel(){return (SEASONS.find(x=>x[0]===SEASON)||["","?"])[1];}
+function seasonLabel(){if(SEASON==="all")return "Alle Saisons";return (SEASONS.find(x=>x[0]===SEASON)||["","?"])[1];}
 function hordeSize(hd){return hd.size===3?3:5;} // Kompatibilität (alte Daten)
 /* Encounter-Methoden: [key, Label, max. Encounter/Stunde] */
 const METHODS=[["horde5","🐾 5er-Horde",1200],["horde3","🐾 3er-Horde",720],["angeln","🎣 Angeln",450],["single","👤 Single",250]];
@@ -1317,7 +1321,9 @@ function rankBadgeHTML(hd){
   return `<span class="rankno${cls}" title="Platz ${r} nach Bewertung (gesamt)"><small>PLATZ</small>${r}</span>`;
 }
 function fmtNum(n){return Math.round(n).toLocaleString("de-DE");}
-function pctOf(m){const v=m.s?m.s[SEASON]:0;return Number(v)||0;}
+function pctOf(m){ if(!m.s) return 0;
+  if(SEASON==="all") return Math.max(0,...["fruehling","sommer","herbst","winter"].map(k=>Number(m.s[k])||0));
+  return Number(m.s[SEASON])||0; }
 /* effektiver %-Wert: Lure-Mons fix 5% (nur wenn eingeblendet), sonst Saison × Tageszeit */
 function activePct(m){
   if(m.lure) return LURE_ON?5:0;
