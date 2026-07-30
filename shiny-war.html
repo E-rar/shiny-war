@@ -1408,7 +1408,7 @@ function huntCalendarHTML(hunts){
       else{
         const cellId="cal_"+sk+"_"+tk;
         const items=arr.map((e,i)=>`<div class="calitem${i>=3?' calmore':''}"${i>=3?' style="display:none"':''} onclick="gotoSlot('${jsAttr(e.slug)}','${sk}','${tk}')" title="${esc(trLoc(e.hd.loc))} · Bewertung ${fmtNum(e.r)}">${icon(e.slug,e.line,'sm')} <span class="calnm">${esc(deName(e.slug,e.line))}</span> <b class="pts">${fmtNum(e.r)}</b></div>`).join("");
-        const more=arr.length>3?`<div class="calmorebtn" onclick="calToggle('${cellId}')"><span class="cmshow">+${arr.length-3} mehr</span><span class="cmhide" style="display:none">weniger anzeigen</span></div>`:"";
+        const more=arr.length>3?`<div class="calmorebtn" onclick="calToggle('${sk}')"><span class="cmshow">+${arr.length-3} mehr</span><span class="cmhide" style="display:none">weniger anzeigen</span></div>`:"";
         cell=`<div id="${cellId}">${items}${more}</div>`;
       }
       h+=`<td class="${isNow?'calnow':''}">${isNow?'<div class="calnowtag">🕒 jetzt</div>':''}${cell}</td>`;
@@ -1417,12 +1417,15 @@ function huntCalendarHTML(hunts){
   }
   return h+`</tbody></table></div>`;
 }
-function calToggle(id){
-  const root=document.getElementById(id); if(!root) return;
-  const expanded=root.classList.toggle("expanded");
-  root.querySelectorAll(".calmore").forEach(el=>el.style.display=expanded?"":"none");
-  const s=root.querySelector(".cmshow"), hd=root.querySelector(".cmhide");
-  if(s&&hd){ s.style.display=expanded?"none":""; hd.style.display=expanded?"":"none"; }
+function calToggle(sk){ // ganze Saison-Zeile gemeinsam auf-/zuklappen
+  const cells=TIMES.map(([tk])=>document.getElementById("cal_"+sk+"_"+tk)).filter(Boolean);
+  const expand=cells.some(c=>c.querySelector(".calmore")&&!c.classList.contains("expanded"));
+  cells.forEach(c=>{
+    c.classList.toggle("expanded",expand);
+    c.querySelectorAll(".calmore").forEach(el=>el.style.display=expand?"":"none");
+    const s=c.querySelector(".cmshow"), hd=c.querySelector(".cmhide");
+    if(s&&hd){ s.style.display=expand?"none":""; hd.style.display=expand?"":"none"; }
+  });
 }
 function gotoSlot(slug,s,t){
   RETURN_USER=USER_ID; // aus dem Kalender einer Detailseite -> Rücksprung merken
