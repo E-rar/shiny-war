@@ -179,6 +179,41 @@ def record_user(data: dict, interaction: discord.Interaction) -> None:
     data.setdefault("users", {})[str(user.id)] = name
 
 
+async def backfill_users():
+    """Ergänzt Namen für alle Hunter/Fänger, die noch nicht in 'users' stehen
+    (z.B. Alt-Hunts). Holt den Discord-Namen per fetch_user (braucht keine
+    privilegierten Intents). Gibt (aufgelöst, gesamt fehlend) zurück."""
+    data = load_data()
+    ids = set()
+    for arr in data.get("active", {}).values():
+        for x in arr or []:
+            try:
+                ids.add(int(x))
+            except (TypeError, ValueError):
+                pass
+    for c in data.get("caught", []):
+        try:
+            ids.add(int(c.get("user_id")))
+        except (TypeError, ValueError):
+            pass
+
+    users = data.setdefault("users", {})
+    missing = [uid for uid in ids if str(uid) not in users]
+    resolved = 0
+    for uid in missing:
+        try:
+            u = await bot.fetch_user(uid)
+            users[str(uid)] = getattr(u, "global_name", None) or u.name
+            resolved += 1
+        except Exception as e:
+            print(f"⚠️  Name für User {uid} nicht auflösbar: {e}")
+    if resolved:
+        save_data(data)
+        schedule_git_push()
+        print(f"✅ {resolved} fehlende Namen ergänzt.")
+    return resolved, len(missing)
+
+
 def normalize(name: str) -> str:
     """Vereinheitlicht Pokémon-Namen, damit 'Pikachu' == 'pikachu' == ' pikachu '."""
     return name.strip().lower()
@@ -254,6 +289,11 @@ async def on_ready():
         print(f"Eingeloggt als {bot.user} – {len(synced)} Slash-Commands synchronisiert ({where}).")
     except Exception as e:
         print(f"Fehler beim Synchronisieren der Commands: {e}")
+    try:
+        resolved, missing = await backfill_users()
+        print(f"Namens-Backfill: {resolved}/{missing} fehlende Namen ergänzt.")
+    except Exception as e:
+        print(f"Fehler beim Namens-Backfill: {e}")
 
 
 # ---------------------------------------------------------------------------
@@ -485,6 +525,15 @@ async def zugang(interaction: discord.Interaction):
             "❌ Ich kann dir keine DM schicken – bitte erlaube Direktnachrichten von Server-Mitgliedern und versuch es nochmal.",
             ephemeral=True,
         )
+
+
+@bot.tree.command(name="syncnamen", description="Ergänzt fehlende Spieler-Namen fürs Leaderboard (Admin/Backfill).")
+async def syncnamen(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
+    resolved, missing = await backfill_users()
+    await interaction.followup.send(
+        f"🔄 Namen aktualisiert: {resolved} von {missing} fehlenden ergänzt.", ephemeral=True
+    )
 
 
 if __name__ == "__main__":
