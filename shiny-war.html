@@ -109,6 +109,8 @@
   .season.timechip.active{background:#b98cff;color:#10141c;border-color:transparent}
   .season.methchip{padding:5px 11px;font-size:12.5px}
   .season.methchip.active{background:var(--accent2);color:#10141c;border-color:transparent}
+  .hlink{cursor:pointer}
+  .hlink:hover{opacity:.7}
   .ulink{cursor:pointer;color:var(--accent2);border-bottom:1px dotted var(--accent2)}
   .ulink:hover{color:var(--text);border-bottom-color:var(--text)}
   .chip.ulink{border-bottom:none;color:inherit}
@@ -1430,6 +1432,13 @@ function renderUser(){
 
 /* ---------- Horden-Helfer ---------- */
 function esc(s){return (s==null?"":String(s)).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+/* String sicher in ein onclick='...(\'X\')' einbetten (Apostrophe/Backslash/Quotes). */
+function jsAttr(s){return String(s==null?"":s).replace(/\\/g,"\\\\").replace(/'/g,"\\'").replace(/"/g,"&quot;");}
+/* Klammer-Zusatz entfernen: "Küstenhöhle (Entrance)" -> "Küstenhöhle" */
+function stripParen(s){return String(s==null?"":s).replace(/\s*\([^)]*\)/g,"").trim();}
+/* Klick auf Ort / Pokémon in einer Hordenkarte -> filtert die Hordenliste danach */
+function filterLoc(name){ LSEARCH=stripParen(name); if(TAB!=="loc"){TAB="loc";document.querySelectorAll(".tab").forEach(el=>el.classList.toggle("active",el.dataset.tab==="loc"));renderSeasonBar();} render(); window.scrollTo({top:0,behavior:"smooth"}); }
+function filterSpec(name){ SEARCH=stripParen(name); if(TAB!=="loc"){TAB="loc";document.querySelectorAll(".tab").forEach(el=>el.classList.toggle("active",el.dataset.tab==="loc"));renderSeasonBar();} render(); window.scrollTo({top:0,behavior:"smooth"}); }
 function seasonLabel(){if(SEASON==="all")return "Alle Saisons";return (SEASONS.find(x=>x[0]===SEASON)||["","?"])[1];}
 function hordeSize(hd){return hd.size===3?3:5;} // Kompatibilität (alte Daten)
 /* Encounter-Methoden: [key, Label, max. Encounter/Stunde] */
@@ -1635,7 +1644,7 @@ function renderHordeCard(hd,edit){
       combo=`<span class="bestcombo" title="Beste Bewertung dieser Horde">✨ Beste Kombi: ${sl} · ${tlab}</span>`; } }
   let h=`<div class="hcard ranked${isBest?' best':''}" data-spec="${esc(hordeSpec(hd))}" data-loc="${esc(hordeLocKey(hd))}" data-method="${methodOf(hd)}" style="${habStyle(hd)}">
     ${rankBadgeHTML(hd)}
-    <h3>📍 ${esc(trLoc(hd.loc)||"—")} ${hd.region?`<span class="ktag">${esc(trRegion(hd.region))}</span>`:""} ${methodBadge(hd)} ${habBadge(hd)} ${levelBadge(hd)} ${combo}
+    <h3>📍 <span class="hlink" onclick="filterLoc('${jsAttr(stripParen(hd.loc))}')" title="Nur diesen Ort zeigen">${esc(stripParen(trLoc(hd.loc))||"—")}</span> ${hd.region?`<span class="ktag">${esc(trRegion(hd.region))}</span>`:""} ${methodBadge(hd)} ${habBadge(hd)} ${levelBadge(hd)} ${combo}
       ${edit?`<span class="hactions">
         ${habSelect(hd.id,hd.hab)}
         <button class="btn" style="padding:4px 9px;font-size:12px" onclick="duplicateHorde('${hd.id}')" title="Kachel für weitere Ebene duplizieren">⧉ Splitten</button>
@@ -1652,7 +1661,7 @@ function renderHordeCard(hd,edit){
     const tmark=m.tod&&m.tod!=="immer"?`<span class="ktag">${todIcon(m.tod)}</span>`:"";
     const luremark=(m.lure&&methodHasLure(methodOf(hd)))?`<span title="Nur mit Lure (Köder)" style="margin-left:2px">${LURE_ICON}</span>`:"";
     h+=`<div class="mrow">
-      <div class="mname">${icon(m.name,line,'sm')} ${esc(memName(m.name))} ${tmark} ${line?tierBadge(line.t):'<span class="ktag">?</span>'} ${luremark} ${mark}</div>
+      <div class="mname">${icon(m.name,line,'sm')} <span class="hlink" onclick="filterSpec('${jsAttr(stripParen(m.name))}')" title="Nur dieses Pokémon zeigen">${esc(stripParen(memName(m.name)))}</span> ${tmark} ${line?tierBadge(line.t):'<span class="ktag">?</span>'} ${luremark} ${mark}</div>
       <div class="mtrack"><div class="mfill" style="width:${Math.min(100,m.pct)}%;background:${col}">${line?val+"p":""}</div></div>
       <div class="mpct">${m.pct}%</div>
     </div>`;
