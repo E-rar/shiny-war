@@ -126,6 +126,8 @@
   .calitem:hover{background:var(--panel)}
   .calitem .calnm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .calitem .pts{color:var(--good)}
+  .calmorebtn{cursor:pointer;font-size:11px;color:var(--accent2);font-weight:600;padding:3px 4px}
+  .calmorebtn:hover{text-decoration:underline}
   .ubest{display:flex;flex-direction:column;gap:5px;margin-top:6px}
   .ubrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:6px 10px}
   .altcard{position:relative;border:1px solid var(--accent2);border-radius:11px;padding:14px;margin-bottom:14px;background:linear-gradient(180deg,rgba(90,200,250,.07),var(--panel2))}
@@ -1399,14 +1401,26 @@ function huntCalendarHTML(hunts){
     h+=`<tr><th class="calseas">${sl}</th>`;
     for(const [tk] of TIMES){
       const arr=cal[sk+"|"+tk]||[]; const isNow=(now.season===sk&&now.tod===tk);
-      let cell = arr.length ? arr.slice(0,3).map(e=>
-        `<div class="calitem" onclick="gotoSlot('${esc(e.slug)}','${sk}','${tk}')" title="${esc(trLoc(e.hd.loc))} · Bewertung ${fmtNum(e.r)}">${icon(e.slug,e.line,'sm')} <span class="calnm">${esc(deName(e.slug,e.line))}</span> <b class="pts">${fmtNum(e.r)}</b></div>`
-      ).join("") + (arr.length>3?`<div class="ktag" style="padding:2px 4px">+${arr.length-3} mehr</div>`:"") : `<span class="ktag">—</span>`;
+      let cell;
+      if(!arr.length){ cell=`<span class="ktag">—</span>`; }
+      else{
+        const cellId="cal_"+sk+"_"+tk;
+        const items=arr.map((e,i)=>`<div class="calitem${i>=3?' calmore':''}"${i>=3?' style="display:none"':''} onclick="gotoSlot('${jsAttr(e.slug)}','${sk}','${tk}')" title="${esc(trLoc(e.hd.loc))} · Bewertung ${fmtNum(e.r)}">${icon(e.slug,e.line,'sm')} <span class="calnm">${esc(deName(e.slug,e.line))}</span> <b class="pts">${fmtNum(e.r)}</b></div>`).join("");
+        const more=arr.length>3?`<div class="calmorebtn" onclick="calToggle('${cellId}')"><span class="cmshow">+${arr.length-3} mehr</span><span class="cmhide" style="display:none">weniger anzeigen</span></div>`:"";
+        cell=`<div id="${cellId}">${items}${more}</div>`;
+      }
       h+=`<td class="${isNow?'calnow':''}">${isNow?'<div class="calnowtag">🕒 jetzt</div>':''}${cell}</td>`;
     }
     h+=`</tr>`;
   }
   return h+`</tbody></table></div>`;
+}
+function calToggle(id){
+  const root=document.getElementById(id); if(!root) return;
+  const expanded=root.classList.toggle("expanded");
+  root.querySelectorAll(".calmore").forEach(el=>el.style.display=expanded?"":"none");
+  const s=root.querySelector(".cmshow"), hd=root.querySelector(".cmhide");
+  if(s&&hd){ s.style.display=expanded?"none":""; hd.style.display=expanded?"":"none"; }
 }
 function gotoSlot(slug,s,t){
   RETURN_USER=USER_ID; // aus dem Kalender einer Detailseite -> Rücksprung merken
