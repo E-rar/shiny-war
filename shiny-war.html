@@ -217,7 +217,7 @@
 <header class="topbar">
   <img class="mascot" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/shiny/400.png" alt="Shiny Bidifas" title="Shiny Bidifas" onerror="this.onerror=null;this.src='https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/400.png'">
   <div class="brand">
-    <h1><span class="spark">✦</span> Bober Board <span class="spark">✦</span></h1>
+    <h1 style="cursor:pointer" onclick="goHome()" title="Zu den Horden – jetzt gerade"><span class="spark">✦</span> Bober Board <span class="spark">✦</span></h1>
     <div class="sub">PokeMMO Team-Tracker · Horden · Leaderboard · Statistik</div>
   </div>
   <img class="mascot flip" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/shiny/400.png" alt="" aria-hidden="true" onerror="this.onerror=null;this.src='https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/400.png'">
@@ -1106,6 +1106,8 @@ function applyNow(){ const s=nowState(); SEASON=s.season; TOD=s.tod;
   renderSeasonBar(); render();
   toast("🕒 Jetzt: "+seasonLabel()+" · "+(TIMES.find(x=>x[0]===TOD)||["",""])[1]+" (Ingame "+pad2(s.h)+":"+pad2(s.min)+")");
 }
+/* Klick auf den Titel: Horden-Reiter, „Jetzt gerade", ohne Pokémon-/Ort-Filter */
+function goHome(){ SEARCH=""; LSEARCH=""; RETURN_USER=null; if(typeof ED!=="undefined") ED=null; applyNow(); window.scrollTo({top:0,behavior:"smooth"}); }
 
 function renderSeasonBar(){
   const bar=document.getElementById("seasonbar");
