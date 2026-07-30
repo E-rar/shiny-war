@@ -128,6 +128,22 @@
   .calitem .pts{color:var(--good)}
   .ubest{display:flex;flex-direction:column;gap:5px;margin-top:6px}
   .ubrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:6px 10px}
+  .altcard{position:relative;border:1px solid var(--accent2);border-radius:11px;padding:14px;margin-bottom:14px;background:linear-gradient(180deg,rgba(90,200,250,.07),var(--panel2))}
+  .altcard h3{margin:0 0 3px;font-size:15px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .altcaro{display:flex;align-items:stretch;gap:8px;margin-top:6px}
+  .altstage{flex:1;min-width:0}
+  .altarrow{flex:0 0 34px;background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:8px;font-size:22px;line-height:1;cursor:pointer}
+  .altarrow:hover{border-color:var(--accent2)}
+  .altstone{display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:6px}
+  .altdotcolor{width:14px;height:14px;border-radius:50%;flex:0 0 auto;box-shadow:0 0 6px rgba(0,0,0,.4)}
+  .altsec{margin:7px 0}
+  .altseclbl{font-size:12px;color:var(--muted);font-weight:600}
+  .altmons{display:flex;flex-wrap:wrap;gap:7px;margin-top:5px}
+  .altmon{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:3px 8px}
+  .altnav{display:flex;align-items:center;gap:12px;margin-top:9px}
+  .altdots{display:flex;gap:7px}
+  .altdot{width:13px;height:13px;border-radius:50%;border:2px solid var(--sc,#888);cursor:pointer;opacity:.45;transition:.15s}
+  .altdot.on{background:var(--sc,#888);opacity:1}
   .hcard{position:relative;border:1px solid var(--border);border-radius:11px;padding:14px;margin-bottom:12px;background:var(--panel2)}
   .hcard.ranked{padding-left:46px}
   .chartwrap{overflow-x:auto;margin:6px 0 2px}
@@ -1597,16 +1613,74 @@ function applyHordeFilter(){
   writeUrl();
   const q=norm(SEARCH), lq=norm(LSEARCH), cnt=document.getElementById("hordeCount");
   let vis=0,total=0;
-  document.querySelectorAll("#view .hcard").forEach(c=>{
+  document.querySelectorAll("#view .hcard, #view .altcard").forEach(c=>{
     total++;
     const okS=!q||(c.dataset.spec||"").includes(q);
     const okL=!lq||(c.dataset.loc||"").includes(lq);
-    const okM=!MFILTER||(c.dataset.method||"")===MFILTER;
+    const okM=!MFILTER||(c.dataset.method||"").split(" ").includes(MFILTER);
     const show=okS&&okL&&okM;
     c.style.display=show?"":"none"; if(show)vis++;
   });
   if(cnt) cnt.textContent = (q||lq||MFILTER) ? (vis+" Fundort"+(vis===1?"":"e")) : (total+" Horden");
 }
+
+/* ===== Spezial-Location: Wandelhöhle / Altering Cave =====================
+   Wechselnde Encounter pro Ingame-Tag (Typ-Phase). 3er-Horden immer 2 Arten (50/50).
+   Schema noch unbekannt -> sobald bekannt, gibt alteringCurrentPhase() den Index zurück. */
+const ALTERING = {
+  loc:"Wandelhöhle", locEn:"Altering Cave", regions:["Hoenn","Kanto"],
+  phases:[
+    {stoneDe:"Oranger Stein", stone:"Orange Stone", typeDe:"Feuer", type:"Fire", color:"#ff7a45",
+      hordes:["Pansear","Seel"], solo:["Emboar","Charmander","Sableye","Magnemite","Bellsprout","Magcargo","Rapidash","Unown"]},
+    {stoneDe:"Grüner Stein", stone:"Green Stone", typeDe:"Pflanze", type:"Grass", color:"#5fd07a",
+      hordes:["Petilil","Zigzagoon"], solo:["Ivysaur","Nidoran","Linoone","Amoonguss"]},
+    {stoneDe:"Grau-brauner Stein", stone:"Grey/Brown Stone", typeDe:"Gestein", type:"Rock", color:"#b0895a",
+      hordes:["Golett","Solrock"], solo:["Relicanth","Tyranitar","Bonsly","Electabuzz"]},
+    {stoneDe:"Weißer Stein", stone:"White Stone", typeDe:"Normal", type:"Normal", color:"#c7d0da",
+      hordes:["Furret","Woobat"], solo:["Eevee","Meditite","Taillow","Nidorina","Cinccino","Delcatty","Raichu"]},
+    {stoneDe:"Dunkelblauer Stein", stone:"Dark Blue Stone", typeDe:"Drache", type:"Dragon", color:"#4a7bd6",
+      hordes:["Altaria","Rattata"], solo:["Salamence","Shelgon","Haxorus","Hoppip","Girafarig","Kingdra","Tranquill"]},
+  ]
+};
+let ALT_IDX={}; // regionIndex -> aktueller Phasen-Index
+function alteringCurrentPhase(r){ return null; /* TODO: sobald das Schema bekannt ist, aktiven Phasen-Index (je Region r) zurückgeben */ }
+function altMon(name){ const l=resolve(name); return `<span class="altmon" title="${esc(labelText(name))}">${icon(name,l,'sm')} <span>${esc(memName(name))}</span>${l?" "+tierBadge(l.t):""}</span>`; }
+function altSpecTokens(){ const set=new Set(); ALTERING.phases.forEach(ph=>[...ph.hordes,...ph.solo].forEach(n=>specTokens(n).forEach(t=>set.add(t)))); return "|"+[...set].join("|")+"|"; }
+function alteringCardHTML(r){
+  const region=ALTERING.regions[r], P=ALTERING.phases, cur=alteringCurrentPhase(r), cid="altc"+r;
+  let idx=(cur!=null?cur:(ALT_IDX[r]||0)); idx=Math.max(0,Math.min(idx,P.length-1)); ALT_IDX[r]=idx;
+  const slides=P.map((ph,i)=>`<div class="altslide" style="display:${i===idx?'':'none'}">
+      <div class="altstone"><span class="altdotcolor" style="background:${ph.color}"></span>
+        <b>${esc(LANG==='en'?ph.stone:ph.stoneDe)}</b>
+        <span class="badge" style="background:${ph.color};color:#10141c">${esc(LANG==='en'?ph.type:ph.typeDe)}</span>
+        ${cur===i?'<span class="calnowtag">🕒 aktuelle Phase</span>':''}</div>
+      <div class="altsec"><span class="altseclbl">🐾 3er-Horde <span class="ktag">(2 Arten · 50 / 50)</span></span>
+        <div class="altmons">${ph.hordes.map(altMon).join("")}</div></div>
+      <div class="altsec"><span class="altseclbl">👤 Single</span>
+        <div class="altmons">${ph.solo.map(altMon).join("")}</div></div>
+    </div>`).join("");
+  const dots=P.map((ph,i)=>`<span class="altdot${i===idx?' on':''}" style="--sc:${ph.color}" onclick="altSet(${r},${i})" title="${esc(LANG==='en'?ph.type:ph.typeDe)}"></span>`).join("");
+  const locName=esc(LANG==='en'?ALTERING.locEn:ALTERING.loc);
+  const dataLoc="|"+norm(ALTERING.loc)+"|"+norm(ALTERING.locEn)+"|"+norm(region)+"|";
+  return `<div class="altcard" id="${cid}" data-loc="${esc(dataLoc)}" data-spec="${esc(altSpecTokens())}" data-method="horde3 single">
+    <h3>🌀 <b><span class="hlink" onclick="filterLoc('${jsAttr(ALTERING.loc)}')" title="Nur die Wandelhöhle(n) zeigen">${locName}</span></b> <span class="ktag">${esc(trRegion(region))}</span>
+      <span class="badge" style="background:var(--panel);border:1px solid var(--border);color:var(--text)">🐾 3er-Horde</span>
+      <span class="badge" style="background:var(--panel);border:1px solid var(--border);color:var(--text)">👤 Single</span></h3>
+    <p class="loc-note">Wechselt pro Ingame-Tag die Typ-Phase (Stein). Schema noch unbekannt — sobald bekannt, wird die aktuelle Phase automatisch markiert. Blättere durch die Phasen:</p>
+    <div class="altcaro">
+      <button class="altarrow" onclick="altGo(${r},-1)" aria-label="zurück">‹</button>
+      <div class="altstage">${slides}</div>
+      <button class="altarrow" onclick="altGo(${r},1)" aria-label="weiter">›</button>
+    </div>
+    <div class="altnav"><span id="altLbl${r}" class="ktag">${idx+1} / ${P.length}</span><span class="altdots">${dots}</span></div>
+  </div>`;
+}
+function altGo(r,d){ const root=document.getElementById("altc"+r); if(!root)return; const s=[...root.querySelectorAll('.altslide')]; if(!s.length)return;
+  ALT_IDX[r]=((ALT_IDX[r]||0)+d+s.length)%s.length; const idx=ALT_IDX[r];
+  s.forEach((p,i)=>p.style.display=i===idx?'':'none');
+  root.querySelectorAll('.altdot').forEach((el,i)=>el.classList.toggle('on',i===idx));
+  const l=document.getElementById('altLbl'+r); if(l) l.textContent=(idx+1)+' / '+s.length; }
+function altSet(r,i){ altGo(r,i-(ALT_IDX[r]||0)); }
 
 function renderLoc(){
   let h=`<div class="card">
@@ -1628,6 +1702,7 @@ function renderLoc(){
   if(ADMIN && ED && !ED.id) h+=hordeEditorHTML(); // neue Horde: Editor oben
   if(HORDES.length) h+=searchBarHTML();
   if(!HORDES.length && !(ADMIN&&ED)) h+=`<div class="empty">Noch keine Horden vorhanden.${ADMIN?'<br>Klick „+ Neue Horde" — oder „Beispiel einfügen", um das Format zu sehen.':' Ein Admin muss sie anlegen bzw. importieren.'}</div>`;
+  ALTERING.regions.forEach((_,r)=>{ h+=alteringCardHTML(r); }); // Spezial: Wandelhöhle je Region
   computeHordeRanks();
   const sorted=[...HORDES].sort((a,b)=>rating(b)-rating(a));
   for(const hd of sorted){
