@@ -1062,11 +1062,14 @@ function activeList(){
 const view=document.getElementById("view");
 let TAB="loc";
 let USER_ID=null; // aktuell geöffnete Spieler-Detailseite
+let RETURN_USER=null; // von welcher Detailseite kam man in den Horden-Reiter (für Zurück-Knopf)
 let CEDIT=null; // Index des Fangs, der gerade bearbeitet wird (Admin)
-function showTab(t){TAB=t;document.querySelectorAll(".tab").forEach(el=>el.classList.toggle("active",el.dataset.tab===t));renderSeasonBar();render();}
+function showTab(t){RETURN_USER=null;TAB=t;document.querySelectorAll(".tab").forEach(el=>el.classList.toggle("active",el.dataset.tab===t));renderSeasonBar();render();}
 function openUser(id){ USER_ID=String(id); TAB="user";
   document.querySelectorAll(".tab").forEach(el=>el.classList.remove("active"));
   renderSeasonBar(); render(); window.scrollTo({top:0,behavior:"smooth"}); }
+function gotoHordeFromUser(slug){ RETURN_USER=USER_ID; gotoHordeSearch(slug); }
+function backToUser(){ const u=RETURN_USER; RETURN_USER=null; if(u) openUser(u); else showTab("hunt"); }
 function userLink(id){ return `<span class="ulink" onclick="openUser('${String(id)}')" title="Spieler-Details öffnen">${esc(uname(id))}</span>`; }
 
 /* ============================================================
@@ -1406,8 +1409,9 @@ function huntCalendarHTML(hunts){
   return h+`</tbody></table></div>`;
 }
 function gotoSlot(slug,s,t){
+  RETURN_USER=USER_ID; // aus dem Kalender einer Detailseite -> Rücksprung merken
   SEASON=s; TOD=t; try{localStorage.setItem("sw_season",s);localStorage.setItem("sw_tod",t);}catch(e){}
-  SEARCH=slug; TAB="loc";
+  SEARCH=slug; LSEARCH=""; TAB="loc";
   document.querySelectorAll(".tab").forEach(el=>el.classList.toggle("active",el.dataset.tab==="loc"));
   renderSeasonBar(); render(); window.scrollTo({top:0,behavior:"smooth"});
 }
@@ -1435,7 +1439,7 @@ function renderUser(){
   for(const hu of hunts){
     const best=bestHordesFor(hu.slug,3);
     h+=`<div class="hcard"><h3><span class="spwrap">${icon(hu.slug,hu.line)} <b>${esc(deName(hu.slug,hu.line))}</b> ${hu.line?tierBadge(hu.line.t):tierBadge(null)} ${hu.line?`<span class="ktag">${hu.line.p} Pkt</span>`:""}</span>
-      <button class="btn" style="margin-left:auto;padding:4px 9px;font-size:12px" onclick="gotoHordeSearch('${esc(hu.slug)}')">🗺️ In Horden zeigen</button></h3>`;
+      <button class="btn" style="margin-left:auto;padding:4px 9px;font-size:12px" onclick="gotoHordeFromUser('${esc(hu.slug)}')">🗺️ In Horden zeigen</button></h3>`;
     if(!best.length) h+=`<p class="loc-note">Keine bekannte Horde für dieses Pokémon.</p>`;
     else{
       h+=`<div class="ubest">`;
@@ -1698,6 +1702,7 @@ function altSet(r,i){ altGo(r,i-(ALT_IDX[r]||0)); }
 
 function renderLoc(){
   let h=`<div class="card">
+    ${RETURN_USER?`<p style="margin:0 0 8px"><button class="btn" onclick="backToUser()">← Zurück zu ${esc(uname(RETURN_USER))}</button></p>`:""}
     <h2>🗺️ Horden${ADMIN?"-Verwaltung":""}</h2>
     <p class="hint">%-Vorkommen für <b>${seasonLabel()}</b> (oben umschalten), sortiert nach Bewertung. Die <b>Bewertung</b> enthält den Unique-Bonus (+8) für Linien, die das Team laut <code>hunts.json</code> noch nicht hat (🆕).${ADMIN?" Änderungen werden lokal gespeichert; Export teilt eine gemeinsame <code>hordes.json</code>.":""}</p>
     ${ADMIN?`<div class="bar" style="justify-content:flex-start;margin:0 0 8px">
