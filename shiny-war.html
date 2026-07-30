@@ -113,6 +113,17 @@
   .ulink:hover{color:var(--text);border-bottom-color:var(--text)}
   .chip.ulink{border-bottom:none;color:inherit}
   .chip.ulink:hover{border-color:var(--accent2);color:var(--text)}
+  .calwrap{overflow-x:auto;margin:4px 0 10px}
+  table.cal{border-collapse:collapse;width:100%;min-width:520px}
+  table.cal th{font-size:12px;color:var(--muted);font-weight:600;padding:6px 8px;text-align:left}
+  table.cal td{border:1px solid var(--border);border-radius:8px;vertical-align:top;padding:5px;background:var(--panel2);min-width:150px}
+  table.cal th.calseas{white-space:nowrap;vertical-align:middle}
+  td.calnow{outline:2px solid var(--good);outline-offset:-2px}
+  .calnowtag{font-size:10px;color:var(--good);font-weight:700;margin-bottom:3px}
+  .calitem{display:flex;align-items:center;gap:6px;font-size:12.5px;padding:3px 4px;border-radius:6px;cursor:pointer}
+  .calitem:hover{background:var(--panel)}
+  .calitem .calnm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .calitem .pts{color:var(--good)}
   .ubest{display:flex;flex-direction:column;gap:5px;margin-top:6px}
   .ubrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:6px 10px}
   .hcard{position:relative;border:1px solid var(--border);border-radius:11px;padding:14px;margin-bottom:12px;background:var(--panel2)}
@@ -1327,6 +1338,49 @@ function bestHordesFor(slug,limit){
   res.sort((a,b)=>b.r-a.r);
   return limit?res.slice(0,limit):res;
 }
+/* Für jede Saison×Tageszeit die effizientesten Ziele des Spielers (aus seinen aktiven Hunts). */
+function buildHuntCalendar(hunts){
+  const sS=SEASON,sT=TOD, cal={};
+  const cands=hunts.map(hu=>({hu,q:norm(hu.slug),list:HORDES.filter(hd=>(hd.members||[]).some(m=>memberMatchesQuery(m,norm(hu.slug))))}));
+  for(const [s] of SEASONS){ for(const [t] of TIMES){
+    SEASON=s; TOD=t; const arr=[];
+    for(const c of cands){
+      let best=null;
+      for(const hd of c.list){
+        if(!(hd.members||[]).some(m=>activePct(m)>0 && memberMatchesQuery(m,c.q))) continue;
+        const r=rating(hd); if(!best||r>best.r) best={r,hd};
+      }
+      if(best && best.r>0) arr.push({slug:c.hu.slug,line:c.hu.line,r:best.r,hd:best.hd});
+    }
+    arr.sort((a,b)=>b.r-a.r); cal[s+"|"+t]=arr;
+  }}
+  SEASON=sS; TOD=sT; return cal;
+}
+function huntCalendarHTML(hunts){
+  const cal=buildHuntCalendar(hunts);
+  if(!Object.values(cal).some(a=>a.length)) return `<p class="loc-note">Für die aktiven Hunts sind (noch) keine Horden bekannt.</p>`;
+  const now=nowState();
+  let h=`<div class="calwrap"><table class="cal"><thead><tr><th></th>`+
+    TIMES.map(([,l])=>`<th>${l}</th>`).join("")+`</tr></thead><tbody>`;
+  for(const [sk,sl] of SEASONS){
+    h+=`<tr><th class="calseas">${sl}</th>`;
+    for(const [tk] of TIMES){
+      const arr=cal[sk+"|"+tk]||[]; const isNow=(now.season===sk&&now.tod===tk);
+      let cell = arr.length ? arr.slice(0,3).map(e=>
+        `<div class="calitem" onclick="gotoSlot('${esc(e.slug)}','${sk}','${tk}')" title="${esc(trLoc(e.hd.loc))} · Bewertung ${fmtNum(e.r)}">${icon(e.slug,e.line,'sm')} <span class="calnm">${esc(deName(e.slug,e.line))}</span> <b class="pts">${fmtNum(e.r)}</b></div>`
+      ).join("") + (arr.length>3?`<div class="ktag" style="padding:2px 4px">+${arr.length-3} mehr</div>`:"") : `<span class="ktag">—</span>`;
+      h+=`<td class="${isNow?'calnow':''}">${isNow?'<div class="calnowtag">🕒 jetzt</div>':''}${cell}</td>`;
+    }
+    h+=`</tr>`;
+  }
+  return h+`</tbody></table></div>`;
+}
+function gotoSlot(slug,s,t){
+  SEASON=s; TOD=t; try{localStorage.setItem("sw_season",s);localStorage.setItem("sw_tod",t);}catch(e){}
+  SEARCH=slug; TAB="loc";
+  document.querySelectorAll(".tab").forEach(el=>el.classList.toggle("active",el.dataset.tab==="loc"));
+  renderSeasonBar(); render(); window.scrollTo({top:0,behavior:"smooth"});
+}
 function renderUser(){
   if(!USER_ID){ TAB="lb"; return renderLeaderboard(); }
   const id=String(USER_ID), name=uname(id);
@@ -1341,9 +1395,12 @@ function renderUser(){
   let h=`<div class="card">
     <p style="margin:0 0 8px"><button class="btn" onclick="showTab('lb')">← Zurück zum Leaderboard</button></p>
     <h2>👤 ${esc(name)}</h2>
-    <p class="hint">${row?`Platz <b>${row.rank}</b> · <b>${row.pts} Punkte</b>${row.bonusPts?` <span class="ktag">(inkl. +${row.bonusPts} Bonus)</span>`:""} · ${row.catches.length} Fang${row.catches.length===1?"":"e"}`:"Noch keine Punkte."} · ${hunts.length} aktive Hunt${hunts.length===1?"":"s"}.</p>
-
-    <h3 style="margin:16px 0 8px">🎯 Aktive Hunts & beste Horden</h3>`;
+    <p class="hint">${row?`Platz <b>${row.rank}</b> · <b>${row.pts} Punkte</b>${row.bonusPts?` <span class="ktag">(inkl. +${row.bonusPts} Bonus)</span>`:""} · ${row.catches.length} Fang${row.catches.length===1?"":"e"}`:"Noch keine Punkte."} · ${hunts.length} aktive Hunt${hunts.length===1?"":"s"}.</p>`;
+  if(hunts.length){
+    h+=`<h3 style="margin:16px 0 8px">📅 Hunt-Kalender <span class="ktag">– beste Ziele je Saison &amp; Tageszeit (Klick springt zur Horde)</span></h3>`;
+    h+=huntCalendarHTML(hunts);
+  }
+  h+=`<h3 style="margin:18px 0 8px">🎯 Aktive Hunts &amp; beste Horden</h3>`;
   if(!hunts.length) h+=`<p class="loc-note">Keine aktiven Hunts in den Bot-Daten.</p>`;
   for(const hu of hunts){
     const best=bestHordesFor(hu.slug,3);
