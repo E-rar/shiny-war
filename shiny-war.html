@@ -1437,8 +1437,8 @@ function jsAttr(s){return String(s==null?"":s).replace(/\\/g,"\\\\").replace(/'/
 /* Klammer-Zusatz entfernen: "Küstenhöhle (Entrance)" -> "Küstenhöhle" */
 function stripParen(s){return String(s==null?"":s).replace(/\s*\([^)]*\)/g,"").trim();}
 /* Klick auf Ort / Pokémon in einer Hordenkarte -> filtert die Hordenliste danach */
-function filterLoc(name){ LSEARCH=stripParen(name); if(TAB!=="loc"){TAB="loc";document.querySelectorAll(".tab").forEach(el=>el.classList.toggle("active",el.dataset.tab==="loc"));renderSeasonBar();} render(); window.scrollTo({top:0,behavior:"smooth"}); }
-function filterSpec(name){ SEARCH=stripParen(name); if(TAB!=="loc"){TAB="loc";document.querySelectorAll(".tab").forEach(el=>el.classList.toggle("active",el.dataset.tab==="loc"));renderSeasonBar();} render(); window.scrollTo({top:0,behavior:"smooth"}); }
+function filterLoc(name){ LSEARCH=stripParen(name); SEARCH=""; if(TAB!=="loc"){TAB="loc";document.querySelectorAll(".tab").forEach(el=>el.classList.toggle("active",el.dataset.tab==="loc"));renderSeasonBar();} render(); window.scrollTo({top:0,behavior:"smooth"}); }
+function filterSpec(name){ SEARCH=stripParen(name); LSEARCH=""; if(TAB!=="loc"){TAB="loc";document.querySelectorAll(".tab").forEach(el=>el.classList.toggle("active",el.dataset.tab==="loc"));renderSeasonBar();} render(); window.scrollTo({top:0,behavior:"smooth"}); }
 function seasonLabel(){if(SEASON==="all")return "Alle Saisons";return (SEASONS.find(x=>x[0]===SEASON)||["","?"])[1];}
 function hordeSize(hd){return hd.size===3?3:5;} // Kompatibilität (alte Daten)
 /* Encounter-Methoden: [key, Label, max. Encounter/Stunde] */
