@@ -207,9 +207,11 @@ async def backfill_users():
             resolved += 1
         except Exception as e:
             print(f"⚠️  Name für User {uid} nicht auflösbar: {e}")
+    # Immer neu speichern & veröffentlichen (Git committet nur bei echter Änderung).
+    # So werden auch manuelle Edits an hunts.json (z.B. gelöschte Fänge) verschlüsselt gepusht.
+    save_data(data)
+    schedule_git_push()
     if resolved:
-        save_data(data)
-        schedule_git_push()
         print(f"✅ {resolved} fehlende Namen ergänzt.")
     return resolved, len(missing)
 
