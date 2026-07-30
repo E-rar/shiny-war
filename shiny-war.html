@@ -1618,8 +1618,8 @@ function applyHordeFilter(){
     const spec=c.dataset.spec||"", loc=c.dataset.loc||"";
     const okM=!MFILTER||(c.dataset.method||"").split(" ").includes(MFILTER);
     let show;
-    if(isAlt){ // Spezial-Karten (Wandelhöhle) nur zeigen, wenn explizit danach gesucht wird
-      show = okM && ((q&&spec.includes(q)) || (lq&&loc.includes(lq)));
+    if(isAlt){ // Spezial-Karten (Wandelhöhle) NUR über die Ortssuche finden, nicht über Pokémon
+      show = okM && (lq && loc.includes(lq));
     } else {
       total++;
       show = (!q||spec.includes(q)) && (!lq||loc.includes(lq)) && okM;
