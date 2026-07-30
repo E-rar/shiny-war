@@ -126,8 +126,12 @@
   .calitem:hover{background:var(--panel)}
   .calitem .calnm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .calitem .pts{color:var(--good)}
-  .calmorebtn{cursor:pointer;font-size:11px;color:var(--accent2);font-weight:600;padding:3px 4px}
-  .calmorebtn:hover{text-decoration:underline}
+  .calmorebtn{cursor:pointer;font-size:11px;color:var(--muted);font-weight:600;padding:3px 4px}
+  .calmorebtn:hover{opacity:.7}
+  .calextra{max-height:0;opacity:0;overflow:hidden;transition:max-height .32s cubic-bezier(.25,.85,.3,1),opacity .25s ease}
+  .expanded .calextra{max-height:400px;opacity:1}
+  .calextra .calitem{transform:translateY(-4px);transition:transform .28s ease}
+  .expanded .calextra .calitem{transform:none}
   .ubest{display:flex;flex-direction:column;gap:5px;margin-top:6px}
   .ubrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:6px 10px}
   .altcard{position:relative;border:1px solid var(--accent2);border-radius:11px;padding:14px;margin-bottom:14px;background:linear-gradient(180deg,rgba(90,200,250,.07),var(--panel2))}
@@ -1407,9 +1411,11 @@ function huntCalendarHTML(hunts){
       if(!arr.length){ cell=`<span class="ktag">—</span>`; }
       else{
         const cellId="cal_"+sk+"_"+tk;
-        const items=arr.map((e,i)=>`<div class="calitem${i>=3?' calmore':''}"${i>=3?' style="display:none"':''} onclick="gotoSlot('${jsAttr(e.slug)}','${sk}','${tk}')" title="${esc(trLoc(e.hd.loc))} · Bewertung ${fmtNum(e.r)}">${icon(e.slug,e.line,'sm')} <span class="calnm">${esc(deName(e.slug,e.line))}</span> <b class="pts">${fmtNum(e.r)}</b></div>`).join("");
-        const more=arr.length>3?`<div class="calmorebtn" onclick="calToggle('${sk}')"><span class="cmshow">+${arr.length-3} mehr</span><span class="cmhide" style="display:none">weniger anzeigen</span></div>`:"";
-        cell=`<div id="${cellId}">${items}${more}</div>`;
+        const mk=e=>`<div class="calitem" onclick="gotoSlot('${jsAttr(e.slug)}','${sk}','${tk}')" title="${esc(trLoc(e.hd.loc))} · Bewertung ${fmtNum(e.r)}">${icon(e.slug,e.line,'sm')} <span class="calnm">${esc(deName(e.slug,e.line))}</span> <b class="pts">${fmtNum(e.r)}</b></div>`;
+        const base=arr.slice(0,3).map(mk).join("");
+        const extra=arr.slice(3).map(mk).join("");
+        const more=arr.length>3?`<div class="calmorebtn" onclick="calToggle('${sk}')"><span class="cmshow">+${arr.length-3} mehr ▾</span><span class="cmhide" style="display:none">weniger anzeigen ▴</span></div>`:"";
+        cell=`<div id="${cellId}">${base}${extra?`<div class="calextra">${extra}</div>`:""}${more}</div>`;
       }
       h+=`<td class="${isNow?'calnow':''}">${isNow?'<div class="calnowtag">🕒 jetzt</div>':''}${cell}</td>`;
     }
@@ -1417,12 +1423,11 @@ function huntCalendarHTML(hunts){
   }
   return h+`</tbody></table></div>`;
 }
-function calToggle(sk){ // ganze Saison-Zeile gemeinsam auf-/zuklappen
+function calToggle(sk){ // ganze Saison-Zeile gemeinsam auf-/zuklappen (animiert via CSS)
   const cells=TIMES.map(([tk])=>document.getElementById("cal_"+sk+"_"+tk)).filter(Boolean);
-  const expand=cells.some(c=>c.querySelector(".calmore")&&!c.classList.contains("expanded"));
+  const expand=cells.some(c=>c.querySelector(".calextra")&&!c.classList.contains("expanded"));
   cells.forEach(c=>{
     c.classList.toggle("expanded",expand);
-    c.querySelectorAll(".calmore").forEach(el=>el.style.display=expand?"":"none");
     const s=c.querySelector(".cmshow"), hd=c.querySelector(".cmhide");
     if(s&&hd){ s.style.display=expand?"none":""; hd.style.display=expand?"":"none"; }
   });
