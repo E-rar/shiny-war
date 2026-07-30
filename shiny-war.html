@@ -1644,7 +1644,7 @@ function renderHordeCard(hd,edit){
       combo=`<span class="bestcombo" title="Beste Bewertung dieser Horde">✨ Beste Kombi: ${sl} · ${tlab}</span>`; } }
   let h=`<div class="hcard ranked${isBest?' best':''}" data-spec="${esc(hordeSpec(hd))}" data-loc="${esc(hordeLocKey(hd))}" data-method="${methodOf(hd)}" style="${habStyle(hd)}">
     ${rankBadgeHTML(hd)}
-    <h3>📍 <span class="hlink" onclick="filterLoc('${jsAttr(stripParen(hd.loc))}')" title="Nur diesen Ort zeigen">${esc(stripParen(trLoc(hd.loc))||"—")}</span> ${hd.region?`<span class="ktag">${esc(trRegion(hd.region))}</span>`:""} ${methodBadge(hd)} ${habBadge(hd)} ${levelBadge(hd)} ${combo}
+    <h3>📍 <span class="hlink" onclick="filterLoc('${jsAttr(stripParen(hd.loc))}')" title="Nur diesen Ort zeigen">${esc(trLoc(hd.loc)||"—")}</span> ${hd.region?`<span class="ktag">${esc(trRegion(hd.region))}</span>`:""} ${methodBadge(hd)} ${habBadge(hd)} ${levelBadge(hd)} ${combo}
       ${edit?`<span class="hactions">
         ${habSelect(hd.id,hd.hab)}
         <button class="btn" style="padding:4px 9px;font-size:12px" onclick="duplicateHorde('${hd.id}')" title="Kachel für weitere Ebene duplizieren">⧉ Splitten</button>
@@ -1661,7 +1661,7 @@ function renderHordeCard(hd,edit){
     const tmark=m.tod&&m.tod!=="immer"?`<span class="ktag">${todIcon(m.tod)}</span>`:"";
     const luremark=(m.lure&&methodHasLure(methodOf(hd)))?`<span title="Nur mit Lure (Köder)" style="margin-left:2px">${LURE_ICON}</span>`:"";
     h+=`<div class="mrow">
-      <div class="mname">${icon(m.name,line,'sm')} <span class="hlink" onclick="filterSpec('${jsAttr(stripParen(m.name))}')" title="Nur dieses Pokémon zeigen">${esc(stripParen(memName(m.name)))}</span> ${tmark} ${line?tierBadge(line.t):'<span class="ktag">?</span>'} ${luremark} ${mark}</div>
+      <div class="mname">${icon(m.name,line,'sm')} <span class="hlink" onclick="filterSpec('${jsAttr(stripParen(m.name))}')" title="Nur dieses Pokémon zeigen">${esc(memName(m.name))}</span> ${tmark} ${line?tierBadge(line.t):'<span class="ktag">?</span>'} ${luremark} ${mark}</div>
       <div class="mtrack"><div class="mfill" style="width:${Math.min(100,m.pct)}%;background:${col}">${line?val+"p":""}</div></div>
       <div class="mpct">${m.pct}%</div>
     </div>`;
