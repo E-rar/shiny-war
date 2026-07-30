@@ -44,6 +44,10 @@ BOARD_PASSWORD = os.getenv("BOARD_PASSWORD", "")
 # 0 = Einschränkung deaktiviert (Bot reagiert überall).
 ALLOWED_CHANNEL_ID = int(os.getenv("ALLOWED_CHANNEL_ID", "0"))
 
+# ID deines Discord-Servers. Wenn gesetzt, werden Slash-Commands SOFORT dort
+# registriert (statt global, was bis zu ~1 Stunde dauern kann). Stark empfohlen.
+GUILD_ID = int(os.getenv("GUILD_ID", "0"))
+
 # Automatisches Pushen der hunts.json ins Git-Repo (für die gehostete Web-App auf GitHub Pages).
 # GIT_AUTO_PUSH=0 schaltet es ab. GIT_PUSH_DELAY = Sekunden Wartezeit nach der letzten Änderung.
 REPO_DIR = Path(__file__).parent
@@ -239,8 +243,15 @@ def pretty_name(key: str) -> str:
 @bot.event
 async def on_ready():
     try:
-        synced = await bot.tree.sync()
-        print(f"Eingeloggt als {bot.user} – {len(synced)} Slash-Commands synchronisiert.")
+        if GUILD_ID:
+            guild = discord.Object(id=GUILD_ID)
+            bot.tree.copy_global_to(guild=guild)          # alle Befehle auf den Server kopieren
+            synced = await bot.tree.sync(guild=guild)      # sofort verfügbar
+            where = f"Server {GUILD_ID}"
+        else:
+            synced = await bot.tree.sync()                 # global (kann bis ~1 Std. dauern)
+            where = "global"
+        print(f"Eingeloggt als {bot.user} – {len(synced)} Slash-Commands synchronisiert ({where}).")
     except Exception as e:
         print(f"Fehler beim Synchronisieren der Commands: {e}")
 

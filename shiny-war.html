@@ -1008,6 +1008,12 @@ function computeScores(){
     teamBonusTotal += uniqueB;
     per[id].catches.push({name:deName(c.pokemon,line),tier:line?line.t:null,pts:base,bonus,tag,date:c.date,e:line?line.e:null,idx:i,f});
   }
+  // Alle bekannten User (aus users-Map, aktiven Hunts, Fängen) mit 0 Punkten aufnehmen
+  const allIds=new Set();
+  Object.keys(DATA.users||{}).forEach(x=>allIds.add(String(x)));
+  Object.values(DATA.active||{}).forEach(arr=>(arr||[]).forEach(x=>allIds.add(String(x))));
+  (DATA.caught||[]).forEach(c=>allIds.add(String(c.user_id)));
+  for(const id of allIds){ if(!per[id]) per[id]={pts:0,bonusPts:0,catches:[]}; }
   const rows=Object.entries(per).map(([id,v])=>({id,...v}))
     .sort((a,b)=>b.pts-a.pts || b.catches.length-a.catches.length);
   // Competition ranking (Gleichstand -> höhere Position, Regel des Events)
@@ -1251,7 +1257,8 @@ function renderHunt(){
 /* ---------- Spieler-Statistik ---------- */
 const STAT_PALETTE=["#7bd88f","#ffd23f","#4aa3ff","#ff9f45","#c678dd","#e23b3b","#5fd0c0","#f078a8","#a0d468","#b0895a"];
 function statEvents(){
-  const {rows}=computeScores();
+  const all=computeScores().rows;
+  const rows=all.filter(r=>(r.catches||[]).length); // nur Spieler mit Fängen im Diagramm
   const colorOf={}; rows.forEach((r,i)=>colorOf[r.id]=STAT_PALETTE[i%STAT_PALETTE.length]);
   const ev=[];
   rows.forEach(r=>(r.catches||[]).forEach(c=>{
