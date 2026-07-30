@@ -1758,35 +1758,6 @@ function renderLoc(){
   if(ADMIN && ED && ED.id){ const e=document.getElementById("hordeEditor"); if(e) e.scrollIntoView({block:"nearest"}); }
 }
 
-/* Saisons, in denen die Horde (bei aktueller Tageszeit) tatsächlich vorkommt. */
-function hordeSeasons(hd){
-  const out=[];
-  for(const [s] of SEASONS){
-    const has=(hd.members||[]).some(m=>{
-      if(!todMatch(m)) return false;
-      if(m.lure) return LURE_ON;
-      return (Number((m.s||{})[s])||0)>0;
-    });
-    if(has) out.push(s);
-  }
-  return out;
-}
-/* Kartentext für die Saison: bei „Alle" die echte(n) Saison(s) der Horde statt „Alle Saisons". */
-function cardSeasonLabel(hd){
-  if(SEASON!=="all") return seasonLabel();
-  const ss=hordeSeasons(hd);
-  if(!ss.length) return "—";
-  if(ss.length===4) return "ganzjährig";
-  return ss.map(s=>(SEASONS.find(x=>x[0]===s)||["","?"])[1]).join(" / ");
-}
-/* Farbiges Saison-Badge fürs Karten-Kopfzeile (nur im „Alle Saison"-Modus). */
-function seasonBadgeFor(hd){
-  if(SEASON!=="all") return "";
-  const ss=hordeSeasons(hd);
-  if(!ss.length) return "";
-  if(ss.length===4) return `<span class="badge" style="background:var(--panel);border:1px solid var(--border);color:var(--text)">🗓️ ganzjährig</span>`;
-  return ss.map(s=>{const lab=(SEASONS.find(x=>x[0]===s)||["",""])[1],col=SEASON_COL[s]||"#888";return `<span class="badge" style="background:${col};color:#10141c">${lab}</span>`;}).join(" ");
-}
 function renderHordeCard(hd,edit){
   const totalMembers=(hd.members||[]).length;
   const mem=activeMembers(hd);
@@ -1798,14 +1769,14 @@ function renderHordeCard(hd,edit){
       combo=`<span class="bestcombo" title="Beste Bewertung dieser Horde">✨ Beste Kombi: ${sl} · ${tlab}</span>`; } }
   let h=`<div class="hcard ranked${isBest?' best':''}" data-spec="${esc(hordeSpec(hd))}" data-loc="${esc(hordeLocKey(hd))}" data-method="${methodOf(hd)}" style="${habStyle(hd)}">
     ${rankBadgeHTML(hd)}
-    <h3>📍 <span class="hlink" onclick="filterLoc('${jsAttr(stripParen(hd.loc))}')" title="Nur diesen Ort zeigen">${esc(trLoc(hd.loc)||"—")}</span> ${hd.region?`<span class="ktag">${esc(trRegion(hd.region))}</span>`:""} ${methodBadge(hd)} ${habBadge(hd)} ${levelBadge(hd)} ${seasonBadgeFor(hd)} ${combo}
+    <h3>📍 <span class="hlink" onclick="filterLoc('${jsAttr(stripParen(hd.loc))}')" title="Nur diesen Ort zeigen">${esc(trLoc(hd.loc)||"—")}</span> ${hd.region?`<span class="ktag">${esc(trRegion(hd.region))}</span>`:""} ${methodBadge(hd)} ${habBadge(hd)} ${levelBadge(hd)} ${combo}
       ${edit?`<span class="hactions">
         ${habSelect(hd.id,hd.hab)}
         <button class="btn" style="padding:4px 9px;font-size:12px" onclick="duplicateHorde('${hd.id}')" title="Kachel für weitere Ebene duplizieren">⧉ Splitten</button>
         <button class="btn" style="padding:4px 9px;font-size:12px" onclick="openEditHorde('${hd.id}')">✎ Bearbeiten</button>
         <button class="btn" style="padding:4px 9px;font-size:12px" onclick="deleteHorde('${hd.id}')">🗑</button></span>`:""}</h3>`;
   if(hd.note) h+=`<p class="loc-note">${esc(hd.note)}</p>`;
-  if(!mem.length) h+=`<p class="loc-note">${totalMembers?`Keine Vorkommen (${cardSeasonLabel(hd)} · ${(TIMES.find(x=>x[0]===TOD)||["",""])[1]}).`:"Keine Species eingetragen."}</p>`;
+  if(!mem.length) h+=`<p class="loc-note">${totalMembers?`Keine Vorkommen (${seasonLabel()} · ${(TIMES.find(x=>x[0]===TOD)||["",""])[1]}).`:"Keine Species eingetragen."}</p>`;
   for(const m of mem){
     const line=resolve(m.name);
     const col=line?TIER_COLORS[line.t]:"#5c6b7a";
@@ -1822,7 +1793,7 @@ function renderHordeCard(hd,edit){
   }
   const rate=encRate(hd);
   const newLines=(hd.members||[]).filter(m=>{const l=resolve(m.name);return activePct(m)>0&&l&&!CAUGHT_LINES.has(norm(l.e));}).length;
-  h+=`<p class="evexp">Ø Wert (${cardSeasonLabel(hd)}): <b>${ev.toFixed(1)} Pkt</b> pro Begegnung <span class="ktag">(Tier +8 für ${newLines} offene Linie${newLines===1?"":"n"})</span><br>
+  h+=`<p class="evexp">Ø Wert (${seasonLabel()}): <b>${ev.toFixed(1)} Pkt</b> pro Begegnung <span class="ktag">(Tier +8 für ${newLines} offene Linie${newLines===1?"":"n"})</span><br>
     Bewertung: <b style="color:var(--good)">${fmtNum(rating(hd))}</b> <span class="ktag">= max. ${fmtNum(rate)} Enc./h × Ø-Wert</span></p></div>`;
   return h;
 }
