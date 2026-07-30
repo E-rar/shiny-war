@@ -1614,11 +1614,16 @@ function applyHordeFilter(){
   const q=norm(SEARCH), lq=norm(LSEARCH), cnt=document.getElementById("hordeCount");
   let vis=0,total=0;
   document.querySelectorAll("#view .hcard, #view .altcard").forEach(c=>{
-    total++;
-    const okS=!q||(c.dataset.spec||"").includes(q);
-    const okL=!lq||(c.dataset.loc||"").includes(lq);
+    const isAlt=c.classList.contains("altcard");
+    const spec=c.dataset.spec||"", loc=c.dataset.loc||"";
     const okM=!MFILTER||(c.dataset.method||"").split(" ").includes(MFILTER);
-    const show=okS&&okL&&okM;
+    let show;
+    if(isAlt){ // Spezial-Karten (Wandelhöhle) nur zeigen, wenn explizit danach gesucht wird
+      show = okM && ((q&&spec.includes(q)) || (lq&&loc.includes(lq)));
+    } else {
+      total++;
+      show = (!q||spec.includes(q)) && (!lq||loc.includes(lq)) && okM;
+    }
     c.style.display=show?"":"none"; if(show)vis++;
   });
   if(cnt) cnt.textContent = (q||lq||MFILTER) ? (vis+" Fundort"+(vis===1?"":"e")) : (total+" Horden");
