@@ -977,8 +977,8 @@ function toast(msg,isErr){
 
 function uname(id){
   const s=String(id);
-  // Discord-Name bevorzugt aus den Bot-Daten (hunts.json "users"), sonst lokal zugeordnet
-  const u=(DATA.users&&DATA.users[s])||NAMES[s];
+  // Discord-Name bevorzugt aus den Bot-Daten (hunts.json "users"), sonst manuell/lokal zugeordnet
+  const u=(DATA.users&&DATA.users[s])||(typeof EXTRA_USERS!=="undefined"&&EXTRA_USERS[s])||NAMES[s];
   if(u) return u;
   return "User "+s.slice(0,4)+"…"+s.slice(-4);
 }
@@ -998,9 +998,26 @@ function flagsFor(c){
 }
 const CTYPES=[["legendary","★ Legendär/Mythos",200],["alpha","α Alpha",75],["egg","🥚 Egg",35],["secret","🔒 Secret",20],["safari","🌴 Safari",10]];
 
+/* Admin-Overlay: manuell angelegte Spieler & Fänge (localStorage), damit sie Bot-/Repo-Reloads
+   überstehen. Werden überall in DATA reingemischt und beim Export mit ausgegeben. */
+let EXTRA_USERS=loadLS("sw_xusers");
+let EXTRA_CATCHES=(()=>{try{return JSON.parse(localStorage.getItem("sw_xcatches")||"[]")}catch(e){return[]}})();
+function saveExtraUsers(){saveLS("sw_xusers",EXTRA_USERS);}
+function saveExtraCatches(){try{localStorage.setItem("sw_xcatches",JSON.stringify(EXTRA_CATCHES))}catch(e){}}
+function allCaught(){ return [...(DATA.caught||[]), ...EXTRA_CATCHES]; }
+/* Liste aller bekannten Spieler {id,name} für Dropdowns. */
+function knownUsers(){
+  const ids=new Set();
+  Object.keys(DATA.users||{}).forEach(x=>ids.add(String(x)));
+  Object.keys(EXTRA_USERS||{}).forEach(x=>ids.add(String(x)));
+  Object.values(DATA.active||{}).forEach(a=>(a||[]).forEach(x=>ids.add(String(x))));
+  allCaught().forEach(c=>ids.add(String(c.user_id)));
+  return [...ids].map(id=>({id,name:uname(id)})).sort((a,b)=>a.name.localeCompare(b.name));
+}
+
 function computeScores(){
   // Chronologisch (nach Datum, dann Eingabereihenfolge), um "zuerst" korrekt zu bestimmen
-  const cs=(DATA.caught||[]).map((c,i)=>({c,i}))
+  const cs=allCaught().map((c,i)=>({c,i}))
     .sort((a,b)=>{const da=a.c.date||"",db=b.c.date||"";return da<db?-1:da>db?1:a.i-b.i;});
   const per={}, teamLines=new Set(), playerLines={}, unknown=new Set();
   let teamBonusTotal=0;
@@ -1035,11 +1052,12 @@ function computeScores(){
     teamBonusTotal += uniqueB;
     per[id].catches.push({name:deName(c.pokemon,line),tier:line?line.t:null,pts:base,bonus,tag,date:c.date,e:line?line.e:null,idx:i,f});
   }
-  // Alle bekannten User (aus users-Map, aktiven Hunts, Fängen) mit 0 Punkten aufnehmen
+  // Alle bekannten User (aus users-Map, Overlay, aktiven Hunts, Fängen) mit 0 Punkten aufnehmen
   const allIds=new Set();
   Object.keys(DATA.users||{}).forEach(x=>allIds.add(String(x)));
+  Object.keys(EXTRA_USERS||{}).forEach(x=>allIds.add(String(x)));
   Object.values(DATA.active||{}).forEach(arr=>(arr||[]).forEach(x=>allIds.add(String(x))));
-  (DATA.caught||[]).forEach(c=>allIds.add(String(c.user_id)));
+  allCaught().forEach(c=>allIds.add(String(c.user_id)));
   for(const id of allIds){ if(!per[id]) per[id]={pts:0,bonusPts:0,catches:[]}; }
   const rows=Object.entries(per).map(([id,v])=>({id,...v}))
     .sort((a,b)=>b.pts-a.pts || b.catches.length-a.catches.length);
@@ -1069,7 +1087,10 @@ const view=document.getElementById("view");
 let TAB="loc";
 let USER_ID=null; // aktuell geöffnete Spieler-Detailseite
 let RETURN_USER=null; // von welcher Detailseite kam man in den Horden-Reiter (für Zurück-Knopf)
-let CEDIT=null; // Index des Fangs, der gerade bearbeitet wird (Admin)
+let CEDIT=null; // Index (in allCaught()) des Fangs, der gerade bearbeitet wird (Admin)
+let ADD_CATCH=null; // !=null -> Formular „Fang hinzufügen" offen
+/* Fang an allCaught()-Index i auflösen: aus DATA.caught ODER dem Overlay EXTRA_CATCHES. */
+function catchRef(i){ const D=(DATA.caught||[]).length; if(i<D) return {c:DATA.caught[i],extra:false,arr:DATA.caught,idx:i}; const j=i-D; return {c:(EXTRA_CATCHES||[])[j],extra:true,arr:EXTRA_CATCHES,idx:j}; }
 function showTab(t){RETURN_USER=null;TAB=t;document.querySelectorAll(".tab").forEach(el=>el.classList.toggle("active",el.dataset.tab===t));renderSeasonBar();render();}
 function openUser(id){ USER_ID=String(id); TAB="user";
   document.querySelectorAll(".tab").forEach(el=>el.classList.remove("active"));
@@ -1203,7 +1224,7 @@ function catchChip(c){
   return `<span class="chip${adm}"><span class="spwrap">${icon(c.name,c.tier!=null?{t:c.tier,n:[c.name],e:c.e}:null,'sm')} ${badge} ${c.name} <b>+${eff}</b>${t}</span></span>`;
 }
 function catchEditorHTML(){
-  const c=DATA.caught[CEDIT]; if(!c) return "";
+  const c=catchRef(CEDIT).c; if(!c) return "";
   const f=flagsFor(c);
   return `<div class="editor" id="catchEditor">
     <b>Fang bearbeiten:</b> ${icon(c.pokemon,resolve(c.pokemon),'sm')} ${esc(memName(c.pokemon))}
@@ -1220,40 +1241,92 @@ function catchEditorHTML(){
   </div>`;
 }
 function editCatch(i){
-  CEDIT=i;
+  CEDIT=i; ADD_CATCH=null;
   if(TAB!=="lb"){ TAB="lb"; document.querySelectorAll(".tab").forEach(el=>el.classList.toggle("active",el.dataset.tab==="lb")); renderSeasonBar(); }
   render();
   const e=document.getElementById("catchEditor"); if(e) e.scrollIntoView({block:"nearest"});
 }
 function saveCEdit(){
-  const c=DATA.caught[CEDIT]; if(!c){CEDIT=null;render();return;}
+  const ref=catchRef(CEDIT), c=ref.c; if(!c){CEDIT=null;render();return;}
   const g=k=>{const e=document.querySelector(".cf_"+k);return e?e.checked:false;};
   const flags={legendary:g("legendary"),alpha:g("alpha"),egg:g("egg"),secret:g("secret"),safari:g("safari")};
-  Object.assign(c,flags);                 // auf den caught-Eintrag schreiben (für Export/Repo)
-  CATCH_FLAGS[catchKey(c)]=flags;         // Overlay -> überlebt Repo-Reloads
-  saveData(); saveCFlags(); CEDIT=null; toast("✓ Fang aktualisiert"); render();
+  Object.assign(c,flags);                 // auf den Eintrag schreiben (für Export/Repo)
+  if(ref.extra){ saveExtraCatches(); }
+  else { CATCH_FLAGS[catchKey(c)]=flags; saveData(); saveCFlags(); }
+  refreshCaughtLines(); CEDIT=null; toast("✓ Fang aktualisiert"); render();
 }
 function cancelCEdit(){CEDIT=null;render();}
 function deleteCatch(i){
   if(!confirm("Diesen Fang wirklich löschen?"))return;
-  DATA.caught.splice(i,1); saveData(); CEDIT=null; toast("Fang gelöscht"); render();
+  const ref=catchRef(i); if(!ref.c){CEDIT=null;render();return;}
+  ref.arr.splice(ref.idx,1);
+  if(ref.extra) saveExtraCatches(); else saveData();
+  refreshCaughtLines(); CEDIT=null; toast("Fang gelöscht"); render();
+}
+/* ---- Admin: Spieler & Fänge manuell anlegen (Overlay) ---- */
+function addUserPrompt(){
+  const name=prompt("Name des neuen Spielers:"); if(!name||!name.trim()) return;
+  const id="m"+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+  EXTRA_USERS[id]=name.trim(); saveExtraUsers(); toast("✓ Spieler hinzugefügt"); render();
+}
+function delExtraUser(id){
+  const nm=uname(id);
+  if(!confirm("Spieler „"+nm+"“ (manuell) entfernen? Zugehörige manuelle Fänge bleiben bestehen."))return;
+  delete EXTRA_USERS[id]; saveExtraUsers(); toast("Spieler entfernt"); render();
+}
+function openAddCatch(){ ADD_CATCH={}; CEDIT=null; render(); const e=document.getElementById("addCatch"); if(e) e.scrollIntoView({block:"nearest"}); }
+function cancelAddCatch(){ ADD_CATCH=null; render(); }
+function addCatchHTML(){
+  const users=knownUsers();
+  const today=new Date().toISOString().slice(0,10);
+  return `<div class="editor" id="addCatch">
+    <b>Fang hinzufügen</b>
+    <div class="frow" style="margin-top:8px">
+      <select id="ac_user">${users.length?users.map(u=>`<option value="${esc(u.id)}">${esc(u.name)}</option>`).join(""):`<option value="">— kein Spieler —</option>`}</select>
+      <input id="ac_spec" list="specList" placeholder="Pokémon (DE/EN)…" style="min-width:180px">
+      <input id="ac_date" type="date" value="${today}">
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:14px;margin:10px 0">
+      ${CTYPES.map(([k,l,v])=>`<label class="lure-lbl"><input type="checkbox" class="acf_${k}"> ${l} <span class="ktag">(${(k==='secret'||k==='safari')?'+':''}${v})</span></label>`).join("")}
+    </div>
+    <div class="bar" style="justify-content:flex-start;margin:0">
+      <button class="btn primary" onclick="saveAddCatch()">✓ Fang hinzufügen</button>
+      <button class="btn" onclick="cancelAddCatch()">Abbrechen</button>
+    </div>
+    <p class="hint" style="margin:8px 0 0">Fügt einen manuellen Fang hinzu (bleibt lokal erhalten, auch wenn der Bot neue Daten pusht). Zum Teilen: ⬇ hunts.json exportieren &amp; committen.</p>
+  </div>`;
+}
+function saveAddCatch(){
+  const uid=(document.getElementById("ac_user")||{}).value||"";
+  const spec=((document.getElementById("ac_spec")||{}).value||"").trim();
+  const date=((document.getElementById("ac_date")||{}).value||"")||new Date().toISOString().slice(0,10);
+  if(!uid){ toast("Bitte einen Spieler wählen",true); return; }
+  if(!spec||!isValidSpecies(spec)){ toast("Kein gültiges Pokémon: „"+spec+"“",true); return; }
+  const c={pokemon:norm(spec), user_id:uid, date};
+  CTYPES.forEach(([k])=>{ const e=document.querySelector(".acf_"+k); if(e&&e.checked) c[k]=true; });
+  EXTRA_CATCHES.push(c); saveExtraCatches(); refreshCaughtLines(); ADD_CATCH=null;
+  toast("✓ Fang hinzugefügt"); render();
 }
 function renderLeaderboard(){
   const {rows,unknown,teamBonus,uniqueLines}=computeScores();
   const total=rows.reduce((s,r)=>s+r.pts,0);
   let h=`<div class="card">
     <h2>🏆 Punkte-Leaderboard</h2>
-    <p class="hint">${rows.length} Spieler · ${(DATA.caught||[]).length} Shinys · ${uniqueLines} Linien · Unique-Bonus ${teamBonus} pts. Gleichstand = höhere Position.${ADMIN?" <b>Klick auf einen Fang</b>, um Sonderfälle (Legendär/Alpha/Egg/Secret/Safari) zu setzen.":""}</p>
+    <p class="hint">${rows.length} Spieler · ${allCaught().length} Shinys · ${uniqueLines} Linien · Unique-Bonus ${teamBonus} pts. Gleichstand = höhere Position.${ADMIN?" <b>Klick auf einen Fang</b>, um Sonderfälle (Legendär/Alpha/Egg/Secret/Safari) zu setzen.":""}</p>
     <p class="hint" style="margin-top:-6px">Regeln: Erst-Fang einer Linie = Tier-Punkte, Team-Erstfang <span style="color:var(--good)">+8</span>, Duplikat <span class="ktag">+1</span>. Sonderfälle: Legendär/Mythos 200 · Alpha 75 · Egg max(35, Tier) · Secret +20 · Safari +10.</p>`;
+  if(ADMIN) h+=`<div class="bar" style="justify-content:flex-start;margin:0 0 10px">
+      <button class="btn" onclick="addUserPrompt()">👤 + Spieler</button>
+      <button class="btn primary" onclick="openAddCatch()">✨ + Fang</button></div>`;
+  if(ADMIN && ADD_CATCH!=null) h+=addCatchHTML();
   if(ADMIN && CEDIT!=null) h+=catchEditorHTML();
-  if(!rows.length){ h+=`<div class="empty">Noch keine gefangenen Shinys in den Daten.</div></div>`; view.innerHTML=h; return; }
+  if(!rows.length){ h+=`<div class="empty">Noch keine Spieler/Fänge in den Daten.</div></div>`; view.innerHTML=h; return; }
   h+=`<table><thead><tr><th>#</th><th>Spieler</th><th>Fänge</th><th style="text-align:right">Punkte</th></tr></thead><tbody>`;
   for(const r of rows){
     const g=r.rank<=3?`g${r.rank}`:"";
     const chips=r.catches.map(catchChip).join(" ");
     h+=`<tr>
       <td class="rank ${g}">${r.rank===1?"🥇":r.rank===2?"🥈":r.rank===3?"🥉":r.rank}</td>
-      <td><b>${userLink(r.id)}</b>${r.bonusPts?`<br><span class="ktag">inkl. +${r.bonusPts} Bonus</span>`:""}</td>
+      <td><b>${userLink(r.id)}</b>${(ADMIN&&EXTRA_USERS[r.id])?` <span class="hlink" onclick="delExtraUser('${String(r.id)}')" title="Manuellen Spieler entfernen" style="color:var(--bad)">🗑</span>`:""}${r.bonusPts?`<br><span class="ktag">inkl. +${r.bonusPts} Bonus</span>`:""}</td>
       <td>${chips||'<span class="ktag">—</span>'}</td>
       <td class="pts">${r.pts}</td></tr>`;
   }
@@ -1554,7 +1627,7 @@ function expValue(hd){return (hd.members||[]).reduce((s,m)=>{const l=resolve(m.n
 let CAUGHT_LINES=new Set();
 function refreshCaughtLines(){
   CAUGHT_LINES=new Set();
-  for(const c of (DATA.caught||[])){ const l=resolve(c.pokemon); if(l) CAUGHT_LINES.add(norm(l.e)); }
+  for(const c of allCaught()){ const l=resolve(c.pokemon); if(l) CAUGHT_LINES.add(norm(l.e)); }
 }
 function teamHasLine(name){ const l=resolve(name); return l?CAUGHT_LINES.has(norm(l.e)):false; }
 /* Effektiver Punktwert einer Species: Tier-Wert + 8 Unique-Bonus, falls Team-Linie noch offen */
@@ -1953,11 +2026,13 @@ async function exportHordes(){
 }
 async function exportHunts(){
   if(!PASS){ toast("Kein Passwort gesetzt — erst entsperren",true); return; }
-  // IDs wieder als Zahlen (bot-kompatibel), inkl. gesetzter Sonderfall-Flags, dann verschlüsseln
-  const t=JSON.stringify(DATA).replace(/"(\d{16,})"(?!\s*:)/g,'$1');
+  // DATA inkl. manueller Overlays (Spieler + Fänge) zusammenführen
+  const merged={ active:DATA.active||{}, caught:allCaught(), users:Object.assign({}, DATA.users||{}, EXTRA_USERS||{}) };
+  // IDs wieder als Zahlen (bot-kompatibel), dann verschlüsseln
+  const t=JSON.stringify(merged).replace(/"(\d{16,})"(?!\s*:)/g,'$1');
   const enc=await encJSON(JSON.parse(t),PASS);
   dlBlob(enc,"hunts.json.enc");
-  toast("⬇ hunts.json.enc (verschlüsselt) exportiert");
+  toast("⬇ hunts.json.enc (mit manuellen Einträgen) exportiert");
 }
 /* Rohes Horden-Array in HORDES übernehmen (von Import ODER Repo-Auto-Load genutzt) */
 function applyHordes(arr){
