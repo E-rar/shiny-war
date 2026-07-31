@@ -1546,6 +1546,24 @@ function gotoSlot(slug,s,t){
   document.querySelectorAll(".tab").forEach(el=>el.classList.toggle("active",el.dataset.tab==="loc"));
   renderSeasonBar(); render(); window.scrollTo({top:0,behavior:"smooth"});
 }
+/* Top-Horden „jetzt gerade" (aktuelle Saison+Tageszeit) für die Hunts des Spielers,
+   gerendert als echte Horden-Karten wie im Horden-Reiter. */
+function bestHordesNow(hunts,limit){
+  const sS=SEASON,sT=TOD, now=nowState();
+  SEASON=now.season; TOD=now.tod;
+  const qs=hunts.map(h=>norm(h.slug));
+  const cands=[];
+  for(const hd of HORDES){
+    if(!(hd.members||[]).some(m=>activePct(m)>0 && qs.some(q=>memberMatchesQuery(m,q)))) continue;
+    const r=rating(hd); if(r>0) cands.push({hd,r});
+  }
+  cands.sort((a,b)=>b.r-a.r);
+  const top=cands.slice(0,limit||3);
+  computeHordeRanks();                 // Platz-Badges passend zur Jetzt-Bewertung
+  const html=top.map(x=>renderHordeCard(x.hd,false)).join("");
+  SEASON=sS; TOD=sT;                   // globale Filter wiederherstellen
+  return {html,count:top.length,now};
+}
 function renderUser(){
   if(!USER_ID){ TAB="lb"; return renderLeaderboard(); }
   const id=String(USER_ID), name=uname(id);
@@ -1564,6 +1582,10 @@ function renderUser(){
   if(hunts.length){
     h+=`<h3 style="margin:16px 0 8px">📅 Hunt-Kalender <span class="ktag">– beste Ziele je Saison &amp; Tageszeit (Klick springt zur Horde)</span></h3>`;
     h+=huntCalendarHTML(hunts);
+    const bn=bestHordesNow(hunts,3);
+    const sl=(SEASONS.find(x=>x[0]===bn.now.season)||["",""])[1], tl=(TIMES.find(x=>x[0]===bn.now.tod)||["",""])[1];
+    h+=`<h3 style="margin:18px 0 8px">🔥 Beste Horden jetzt gerade <span class="ktag">(${sl} · ${tl} · Ingame ${pad2(bn.now.h)}:${pad2(bn.now.min)})</span></h3>`;
+    h+= bn.count ? bn.html : `<p class="loc-note">Für deine aktiven Hunts gibt es gerade (jetzt) keine passende Horde.</p>`;
   }
   h+=`<h3 style="margin:18px 0 8px">🎯 Aktive Hunts &amp; beste Horden</h3>`;
   if(!hunts.length) h+=`<p class="loc-note">Keine aktiven Hunts in den Bot-Daten.</p>`;
