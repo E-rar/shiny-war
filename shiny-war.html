@@ -1567,6 +1567,7 @@ function bestHordesNow(hunts,limit){
 function renderUser(){
   if(!USER_ID){ TAB="lb"; return renderLeaderboard(); }
   const id=String(USER_ID), name=uname(id);
+  setScorePerspective(id); // Horden-Wertigkeit auf dieser Seite individuell für diesen Spieler
   const {rows}=computeScores();
   const row=rows.find(r=>r.id===id);
   const hunts=[];
@@ -1612,6 +1613,7 @@ function renderUser(){
   if(row&&row.catches.length) h+=`<div>`+row.catches.map(catchChip).join(" ")+`</div>`;
   else h+=`<p class="loc-note">Noch keine gefangenen Shinys.</p>`;
   h+=`</div>`;
+  setScorePerspective(null); // Perspektive zurücksetzen (andere Reiter = Team-Sicht)
   view.innerHTML=h;
 }
 
@@ -1687,8 +1689,17 @@ function refreshCaughtLines(){
   if(typeof bumpRatingCache==="function") bumpRatingCache(); // Team-Fänge ändern effPoints -> Cache leeren
 }
 function teamHasLine(name){ const l=resolve(name); return l?CAUGHT_LINES.has(norm(l.e)):false; }
-/* Effektiver Punktwert einer Species: Tier-Wert + 8 Unique-Bonus, falls Team-Linie noch offen */
-function effPoints(name){ const l=resolve(name); if(!l) return 0; return l.p + (CAUGHT_LINES.has(norm(l.e))?0:8); }
+/* Spieler-Perspektive: wenn gesetzt, zählt der individuelle Punktwert (schon gefangen -> nur +1). */
+let SCORE_FOR=null, SCORE_SET=null;
+function userCaughtLines(id){ const set=new Set(), s=String(id);
+  for(const c of allCaught()){ if(String(c.user_id)!==s) continue; const l=resolve(c.pokemon); if(l) set.add(norm(l.e)); }
+  return set; }
+function setScorePerspective(id){ if(id){ SCORE_FOR=String(id); SCORE_SET=userCaughtLines(id); } else { SCORE_FOR=null; SCORE_SET=null; } }
+/* Effektiver Punktwert einer Species. Team: Tier + 8 (falls Team-Linie offen).
+   Spieler-Perspektive (SCORE_SET gesetzt): eigene Duplikat-Linie -> nur 1 Punkt. */
+function effPoints(name){ const l=resolve(name); if(!l) return 0; const k=norm(l.e);
+  if(SCORE_SET && SCORE_SET.has(k)) return 1;
+  return l.p + (CAUGHT_LINES.has(k)?0:8); }
 /* Sichtbare Members für aktuellen Filter (Saison/Tageszeit/Lure), Prozente auf Summe=100 normalisiert.
    Bsp.: Magmar nur morgens/mittags -> nachts fällt er raus, Luxio wird auf 100% hochskaliert. */
 function activeMembers(hd){
@@ -1710,7 +1721,7 @@ let _evCache={};
 function bumpRatingCache(){ _evCache={}; }
 function effExpValue(hd){
   if(!hd.id) return activeMembers(hd).reduce((s,m)=>s+m.frac*effPoints(m.name),0);
-  const k=hd.id+"|"+SEASON+"|"+TOD+"|"+(LURE_ON?1:0);
+  const k=hd.id+"|"+SEASON+"|"+TOD+"|"+(LURE_ON?1:0)+"|"+(SCORE_FOR||"");
   let v=_evCache[k];
   if(v===undefined){ v=activeMembers(hd).reduce((s,m)=>s+m.frac*effPoints(m.name),0); _evCache[k]=v; }
   return v;
@@ -1923,8 +1934,10 @@ function renderHordeCard(hd,edit){
   for(const m of mem){
     const line=resolve(m.name);
     const col=line?TIER_COLORS[line.t]:"#5c6b7a";
-    const open=line&&!CAUGHT_LINES.has(norm(line.e));
-    const mark=line?(open?'<span style="color:var(--good)">🆕 +8</span>':'<span class="ktag">✓ Team</span>'):'';
+    const uk=line?norm(line.e):"";
+    const userHas=!!(SCORE_SET&&uk&&SCORE_SET.has(uk));
+    const open=line&&!CAUGHT_LINES.has(uk);
+    const mark=!line?'':userHas?'<span class="ktag">✓ hast du · +1</span>':(open?'<span style="color:var(--good)">🆕 +8</span>':'<span class="ktag">✓ Team</span>');
     const val=line?effPoints(m.name):0;
     const tmark=m.tod&&m.tod!=="immer"?`<span class="ktag">${todIcon(m.tod)}</span>`:"";
     const luremark=(m.lure&&methodHasLure(methodOf(hd)))?`<span title="Nur mit Lure (Köder)" style="margin-left:2px">${LURE_ICON}</span>`:"";
@@ -1935,7 +1948,7 @@ function renderHordeCard(hd,edit){
     </div>`;
   }
   const rate=encRate(hd);
-  const newLines=(hd.members||[]).filter(m=>{const l=resolve(m.name);return activePct(m)>0&&l&&!CAUGHT_LINES.has(norm(l.e));}).length;
+  const newLines=(hd.members||[]).filter(m=>{const l=resolve(m.name);if(!(activePct(m)>0&&l))return false;const k=norm(l.e);if(SCORE_SET&&SCORE_SET.has(k))return false;return !CAUGHT_LINES.has(k);}).length;
   h+=`<p class="evexp">Ø Wert (${seasonLabel()}): <b>${ev.toFixed(1)} Pkt</b> pro Begegnung <span class="ktag">(Tier +8 für ${newLines} offene Linie${newLines===1?"":"n"})</span><br>
     Bewertung: <b style="color:var(--good)">${fmtNum(rating(hd))}</b> <span class="ktag">= max. ${fmtNum(rate)} Enc./h × Ø-Wert</span></p></div>`;
   return h;
