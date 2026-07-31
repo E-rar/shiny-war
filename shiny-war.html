@@ -975,7 +975,7 @@ function loadHordes(){try{
     a.forEach((h,i)=>{ if(!h.id||seen.has(h.id)) h.id="h"+st+"_"+i.toString(36); seen.add(h.id); });
     return a;
   }catch(e){return[]}}
-function saveHordes(){try{localStorage.setItem("sw_hordes",JSON.stringify(HORDES))}catch(e){}}
+function saveHordes(){try{localStorage.setItem("sw_hordes",JSON.stringify(HORDES))}catch(e){} if(typeof bumpRatingCache==="function") bumpRatingCache();}
 /* "dirty" = lokale Horden-Änderungen, die noch nicht ins Repo exportiert/committet sind.
    Solange dirty, überschreibt der Repo-Auto-Load die lokalen Änderungen NICHT. */
 function hordesDirty(){try{return localStorage.getItem("sw_hordes_dirty")==="1"}catch(e){return false}}
@@ -1684,6 +1684,7 @@ let CAUGHT_LINES=new Set();
 function refreshCaughtLines(){
   CAUGHT_LINES=new Set();
   for(const c of allCaught()){ const l=resolve(c.pokemon); if(l) CAUGHT_LINES.add(norm(l.e)); }
+  if(typeof bumpRatingCache==="function") bumpRatingCache(); // Team-Fänge ändern effPoints -> Cache leeren
 }
 function teamHasLine(name){ const l=resolve(name); return l?CAUGHT_LINES.has(norm(l.e)):false; }
 /* Effektiver Punktwert einer Species: Tier-Wert + 8 Unique-Bonus, falls Team-Linie noch offen */
@@ -1703,7 +1704,17 @@ function activeMembers(hd){
   }
   return vis.sort((a,b)=>b.raw-a.raw);
 }
-function effExpValue(hd){ return activeMembers(hd).reduce((s,m)=>s+m.frac*effPoints(m.name),0); }
+/* Cache für den Ø-Wert je Horde+Filter (Saison/Zeit/Lure). Wird bei Daten-/Fang-Änderungen geleert.
+   Beschleunigt Sortieren, Ranking und Karten-Rendering bei sehr vielen Horden enorm. */
+let _evCache={};
+function bumpRatingCache(){ _evCache={}; }
+function effExpValue(hd){
+  if(!hd.id) return activeMembers(hd).reduce((s,m)=>s+m.frac*effPoints(m.name),0);
+  const k=hd.id+"|"+SEASON+"|"+TOD+"|"+(LURE_ON?1:0);
+  let v=_evCache[k];
+  if(v===undefined){ v=activeMembers(hd).reduce((s,m)=>s+m.frac*effPoints(m.name),0); _evCache[k]=v; }
+  return v;
+}
 
 let ED=null; // Editor-Status: null=zu, sonst {id, draft}
 let SEARCH="";  // Pokémon-Suche (filtert Horden)
@@ -1714,12 +1725,15 @@ function setLocSearch(v){LSEARCH=v;applyHordeFilter();}
 function setMethodFilter(v){MFILTER=(MFILTER===v?"":v);render();}
 function clearAllSearch(){SEARCH="";LSEARCH="";MFILTER="";render();}
 
-/* Alle Such-Tokens einer Species: Name, DE, EN + ganze Entwicklungslinie */
+/* Alle Such-Tokens einer Species: Name, DE, EN + ganze Entwicklungslinie (gecacht je Name). */
+let _stCache={};
 function specTokens(name){
+  const key=norm(name); if(!key) return [];
+  const c=_stCache[key]; if(c) return c;
   const set=new Set(); const add=s=>{const k=norm(s);if(k)set.add(k);};
   add(name); const lab=speciesLabels(name); add(lab.de); add(lab.en);
   const l=resolve(name); if(l){ add(l.e); l.n.forEach(add); const ev=EN_LINES[l.e]; if(ev) ev.forEach(add); }
-  return [...set];
+  const arr=[...set]; _stCache[key]=arr; return arr;
 }
 function hordeSpec(hd){
   const set=new Set();
@@ -2358,6 +2372,7 @@ function applyPokedb(obj){
     if(rec.name_en) POKEDB[norm(rec.name_en)]=rec;
   }
   DB_LOADED=true;
+  _stCache={}; if(typeof bumpRatingCache==="function") bumpRatingCache(); // Namens-/Linien-Auflösung geändert
   savePokedb(); buildSpeciesOptions(); ensureDatalists();
   render();
 }
