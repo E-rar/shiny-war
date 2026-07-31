@@ -107,6 +107,8 @@
   .season.active[data-s="winter"]{background:#8fd3ff}
   .season.active[data-s="all"]{background:#9aa7b8}
   .season.timechip.active{background:#b98cff;color:#10141c;border-color:transparent}
+  .mesel{background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:13px;max-width:150px;cursor:pointer}
+  .mesel:hover{border-color:var(--accent2)}
   .season.methchip{padding:5px 11px;font-size:12.5px}
   .season.methchip.active{background:var(--accent2);color:#10141c;border-color:transparent}
   .hlink{cursor:pointer}
@@ -248,7 +250,9 @@
     <div class="tab active" data-tab="loc" onclick="showTab('loc')">🗺️ Horden</div>
     <div class="tab" data-tab="tier" onclick="showTab('tier')">📋 Tierlist</div>
     <div class="tab" data-tab="stats" onclick="showTab('stats')">📈 Statistik</div>
-    <button class="btn" style="margin-left:auto;align-self:center" id="langBtn" onclick="toggleLang()" title="Pokémon-Namen zwischen Deutsch und Englisch umschalten">🌐 <span id="langLbl">DE</span></button>
+    <select id="meSelect" class="mesel" style="margin-left:auto;align-self:center" title="Spieler auswählen" onchange="saveMe(this.value)"></select>
+    <button class="btn" style="align-self:center" onclick="openMe()" title="Zur ausgewählten Spielerseite">👤 Meine Seite</button>
+    <button class="btn" style="align-self:center" id="langBtn" onclick="toggleLang()" title="Pokémon-Namen zwischen Deutsch und Englisch umschalten">🌐 <span id="langLbl">DE</span></button>
     <button class="btn" style="align-self:center" onclick="copyShareLink()" title="Aktuellen Link kopieren (Tab, Saison, Zeit, Filter)">🔗 Teilen</button>
     <button class="btn" style="align-self:center" onclick="forgetPass()" title="Sperren / Passwort ändern">🔒</button>
   </div>
@@ -1098,6 +1102,22 @@ function openUser(id){ USER_ID=String(id); TAB="user";
 function gotoHordeFromUser(slug){ RETURN_USER=USER_ID; gotoHordeSearch(slug); }
 function backToUser(){ const u=RETURN_USER; RETURN_USER=null; if(u) openUser(u); else showTab("hunt"); }
 function userLink(id){ return `<span class="ulink" onclick="openUser('${String(id)}')" title="Spieler-Details öffnen">${esc(uname(id))}</span>`; }
+/* Spieler-Auswahl oben rechts: merkt sich den ausgewählten Spieler, Button öffnet dessen Seite. */
+function loadMe(){try{return localStorage.getItem("sw_me")||""}catch(e){return""}}
+function saveMe(v){try{localStorage.setItem("sw_me",v||"")}catch(e){}}
+function renderMeSelect(){
+  const sel=document.getElementById("meSelect"); if(!sel) return;
+  const users=(typeof knownUsers==="function")?knownUsers():[];
+  const cur=sel.value||loadMe();
+  sel.innerHTML = users.length ? users.map(u=>`<option value="${esc(u.id)}">${esc(u.name)}</option>`).join("") : `<option value="">— keine Spieler —</option>`;
+  if(cur && users.some(u=>String(u.id)===String(cur))) sel.value=cur;
+}
+function openMe(){
+  const sel=document.getElementById("meSelect");
+  const id=(sel&&sel.value)||loadMe();
+  if(!id){ toast("Bitte oben rechts einen Spieler auswählen",true); return; }
+  saveMe(id); openUser(id);
+}
 
 /* ============================================================
    "JETZT GERADE" — Saison & Tageszeit aus Echtzeit/Ingame-Zeit
@@ -1201,6 +1221,7 @@ function copyShareLink(){
 
 function render(){
   writeUrl();
+  renderMeSelect();
   if(TAB==="lb") return renderLeaderboard();
   if(TAB==="hunt") return renderHunt();
   if(TAB==="tier") return renderTierlist();
