@@ -1107,7 +1107,7 @@ let ADD_CATCH=null; // !=null -> Formular „Fang hinzufügen" offen
 /* Fang an allCaught()-Index i auflösen: aus DATA.caught ODER dem Overlay EXTRA_CATCHES. */
 function catchRef(i){ const D=(DATA.caught||[]).length; if(i<D) return {c:DATA.caught[i],extra:false,arr:DATA.caught,idx:i}; const j=i-D; return {c:(EXTRA_CATCHES||[])[j],extra:true,arr:EXTRA_CATCHES,idx:j}; }
 function showTab(t){RETURN_USER=null;TAB=t;document.querySelectorAll(".tab").forEach(el=>el.classList.toggle("active",el.dataset.tab===t));renderSeasonBar();render();}
-function openUser(id){ USER_ID=String(id); TAB="user";
+function openUser(id){ USER_ID=String(id); TAB="user"; USER_HORDE_LIMIT=40;
   document.querySelectorAll(".tab").forEach(el=>el.classList.remove("active"));
   renderSeasonBar(); render(); window.scrollTo({top:0,behavior:"smooth"}); }
 function gotoHordeFromUser(slug){ RETURN_USER=USER_ID; gotoHordeSearch(slug); }
@@ -1546,24 +1546,34 @@ function gotoSlot(slug,s,t){
   document.querySelectorAll(".tab").forEach(el=>el.classList.toggle("active",el.dataset.tab==="loc"));
   renderSeasonBar(); render(); window.scrollTo({top:0,behavior:"smooth"});
 }
-/* Top-Horden „jetzt gerade" (aktuelle Saison+Tageszeit) für die Hunts des Spielers,
-   gerendert als echte Horden-Karten wie im Horden-Reiter. */
-function bestHordesNow(hunts,limit){
+/* Aktive Hunts eines Spielers [{slug,line}]. */
+function userActiveHunts(id){ const s=String(id), out=[];
+  for(const [slug,ids] of Object.entries(DATA.active||{})){ if((ids||[]).map(String).includes(s)) out.push({slug,line:resolve(slug)}); }
+  return out; }
+/* ALLE Horden „jetzt gerade" (aktuelle Saison+Tageszeit) für die Targets des Spielers,
+   paginiert (USER_HORDE_LIMIT + „Mehr anzeigen"), individuell gewertet, echte Karten. */
+let USER_HORDE_LIMIT=40;
+function renderUserHordes(userId){
+  const box=document.getElementById("userHordeList"); if(!box) return;
   const sS=SEASON,sT=TOD, now=nowState();
-  SEASON=now.season; TOD=now.tod;
-  const qs=hunts.map(h=>norm(h.slug));
+  SEASON=now.season; TOD=now.tod; setScorePerspective(userId);
+  const qs=userActiveHunts(userId).map(h=>norm(h.slug));
   const cands=[];
   for(const hd of HORDES){
     if(!(hd.members||[]).some(m=>activePct(m)>0 && qs.some(q=>memberMatchesQuery(m,q)))) continue;
     const r=rating(hd); if(r>0) cands.push({hd,r});
   }
   cands.sort((a,b)=>b.r-a.r);
-  const top=cands.slice(0,limit||3);
-  computeHordeRanks();                 // Platz-Badges passend zur Jetzt-Bewertung
-  const html=top.map(x=>renderHordeCard(x.hd,false)).join("");
-  SEASON=sS; TOD=sT;                   // globale Filter wiederherstellen
-  return {html,count:top.length,now};
+  computeHordeRanks(); // Platz-Badges passend zur Jetzt-Bewertung/Perspektive
+  const limit=Math.min(USER_HORDE_LIMIT, cands.length);
+  let h="";
+  for(let i=0;i<limit;i++) h+=renderHordeCard(cands[i].hd,false);
+  if(cands.length>limit) h+=`<div style="text-align:center;margin:8px 0 2px"><button class="btn" onclick="showMoreUserHordes()">▾ Mehr anzeigen (noch ${cands.length-limit})</button></div>`;
+  if(!cands.length) h+=`<p class="loc-note">Für deine aktiven Hunts gibt es gerade (jetzt) keine passende Horde.</p>`;
+  box.innerHTML=h;
+  setScorePerspective(null); SEASON=sS; TOD=sT; // zurücksetzen
 }
+function showMoreUserHordes(){ USER_HORDE_LIMIT+=40; renderUserHordes(USER_ID); }
 function renderUser(){
   if(!USER_ID){ TAB="lb"; return renderLeaderboard(); }
   const id=String(USER_ID), name=uname(id);
@@ -1583,30 +1593,12 @@ function renderUser(){
   if(hunts.length){
     h+=`<h3 style="margin:16px 0 8px">📅 Hunt-Kalender <span class="ktag">– beste Ziele je Saison &amp; Tageszeit (Klick springt zur Horde)</span></h3>`;
     h+=huntCalendarHTML(hunts);
-    const bn=bestHordesNow(hunts,3);
-    const sl=(SEASONS.find(x=>x[0]===bn.now.season)||["",""])[1], tl=(TIMES.find(x=>x[0]===bn.now.tod)||["",""])[1];
-    h+=`<h3 style="margin:18px 0 8px">🔥 Beste Horden jetzt gerade <span class="ktag">(${sl} · ${tl} · Ingame ${pad2(bn.now.h)}:${pad2(bn.now.min)})</span></h3>`;
-    h+= bn.count ? bn.html : `<p class="loc-note">Für deine aktiven Hunts gibt es gerade (jetzt) keine passende Horde.</p>`;
-  }
-  h+=`<h3 style="margin:18px 0 8px">🎯 Aktive Hunts &amp; beste Horden</h3>`;
-  if(!hunts.length) h+=`<p class="loc-note">Keine aktiven Hunts in den Bot-Daten.</p>`;
-  for(const hu of hunts){
-    const best=bestHordesFor(hu.slug,3);
-    h+=`<div class="hcard"><h3><span class="spwrap">${icon(hu.slug,hu.line)} <b>${esc(deName(hu.slug,hu.line))}</b> ${hu.line?tierBadge(hu.line.t):tierBadge(null)} ${hu.line?`<span class="ktag">${hu.line.p} Pkt</span>`:""}</span>
-      <button class="btn" style="margin-left:auto;padding:4px 9px;font-size:12px" onclick="gotoHordeFromUser('${esc(hu.slug)}')">🗺️ In Horden zeigen</button></h3>`;
-    if(!best.length) h+=`<p class="loc-note">Keine bekannte Horde für dieses Pokémon.</p>`;
-    else{
-      h+=`<div class="ubest">`;
-      for(const b of best){
-        const seas=(SEASONS.find(x=>x[0]===b.season)||["",""])[1];
-        const tl=(TIMES.find(x=>x[0]===b.tod)||["",""])[1];
-        h+=`<div class="ubrow"><span>📍 <b>${esc(trLoc(b.hd.loc)||"—")}</b> ${b.hd.region?`<span class="ktag">${esc(trRegion(b.hd.region))}</span>`:""} ${methodBadge(b.hd)} ${habBadge(b.hd)}</span>
-          <span class="ktag">beste Kombi: ${seas} · ${tl}</span>
-          <b class="pts" style="margin-left:auto;color:var(--good)">${fmtNum(b.r)}</b></div>`;
-      }
-      h+=`</div>`;
-    }
-    h+=`</div>`;
+    const now=nowState();
+    const sl=(SEASONS.find(x=>x[0]===now.season)||["",""])[1], tl=(TIMES.find(x=>x[0]===now.tod)||["",""])[1];
+    h+=`<h3 style="margin:18px 0 8px">🔥 Beste Horden jetzt gerade <span class="ktag">(${sl} · ${tl} · Ingame ${pad2(now.h)}:${pad2(now.min)})</span></h3>`;
+    h+=`<div id="userHordeList"></div>`;
+  } else {
+    h+=`<p class="loc-note">Keine aktiven Hunts in den Bot-Daten.</p>`;
   }
 
   h+=`<h3 style="margin:18px 0 8px">🏆 Fänge</h3>`;
@@ -1615,6 +1607,7 @@ function renderUser(){
   h+=`</div>`;
   setScorePerspective(null); // Perspektive zurücksetzen (andere Reiter = Team-Sicht)
   view.innerHTML=h;
+  if(hunts.length) renderUserHordes(id); // „Beste Horden jetzt gerade" (paginiert) einfügen
 }
 
 /* ---------- Horden-Helfer ---------- */
