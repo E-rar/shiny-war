@@ -1732,7 +1732,7 @@ let SEARCH="";  // Pokémon-Suche (filtert Horden)
 let LSEARCH=""; // Orts-/Region-Suche
 let MFILTER=""; // Methoden-Filter: ""=alle | horde5 | horde3 | angeln | single
 function hordeLocKey(hd){return norm(hd.loc||"")+"|"+norm(hd.region||"");}
-function setLocSearch(v){LSEARCH=v;applyHordeFilter();}
+function setLocSearch(v){LSEARCH=v;HORDE_LIMIT=40;renderHordeList();}
 function setMethodFilter(v){MFILTER=(MFILTER===v?"":v);render();}
 function clearAllSearch(){SEARCH="";LSEARCH="";MFILTER="";render();}
 
@@ -1764,7 +1764,7 @@ function searchBarHTML(){
     ${METHODS.map(([k,l])=>`<div class="season methchip ${MFILTER===k?'active':''}" onclick="setMethodFilter('${k}')">${l}</div>`).join("")}
   </div>`;
 }
-function setHordeSearch(v){SEARCH=v;applyHordeFilter();}
+function setHordeSearch(v){SEARCH=v;HORDE_LIMIT=40;renderHordeList();}
 function clearHordeSearch(){SEARCH="";render();}
 /* passt ein Member (inkl. Entwicklungslinie) zur Suchanfrage? */
 function memberMatchesQuery(m,q){ return ("|"+specTokens(m.name).join("|")+"|").includes(q); }
@@ -1796,25 +1796,43 @@ function commitSearch(v){
   }
   applyHordeFilter();
 }
-function applyHordeFilter(){
-  writeUrl();
-  const q=norm(SEARCH), lq=norm(LSEARCH), cnt=document.getElementById("hordeCount");
-  let vis=0,total=0;
-  document.querySelectorAll("#view .hcard, #view .altcard").forEach(c=>{
-    const isAlt=c.classList.contains("altcard");
-    const spec=c.dataset.spec||"", loc=c.dataset.loc||"";
-    const okM=!MFILTER||(c.dataset.method||"").split(" ").includes(MFILTER);
-    let show;
-    if(isAlt){ // Spezial-Karten (Wandelhöhle) NUR über die Ortssuche finden, nicht über Pokémon
-      show = okM && (lq && loc.includes(lq));
-    } else {
-      total++;
-      show = (!q||spec.includes(q)) && (!lq||loc.includes(lq)) && okM;
-    }
-    c.style.display=show?"":"none"; if(show)vis++;
-  });
-  if(cnt) cnt.textContent = (q||lq||MFILTER) ? (vis+" Fundort"+(vis===1?"":"e")) : (total+" Horden");
+/* Pagination: ungefiltert nur die Top HORDE_LIMIT, sonst ALLE Treffer. */
+let HORDE_LIMIT=40;
+function hordeMatchesFilter(hd,q,lq){
+  if(MFILTER && methodOf(hd)!==MFILTER) return false;
+  if(q && !hordeSpec(hd).includes(q)) return false;
+  if(lq && !hordeLocKey(hd).includes(lq)) return false;
+  return true;
 }
+function renderHordeList(){
+  writeUrl();
+  const box=document.getElementById("hordeList"); if(!box) return;
+  const q=norm(SEARCH), lq=norm(LSEARCH), filtering=!!(q||lq||MFILTER);
+  computeHordeRanks();
+  const sorted=[...HORDES].sort((a,b)=>rating(b)-rating(a));
+  const matches = filtering ? sorted.filter(hd=>hordeMatchesFilter(hd,q,lq)) : sorted;
+  let limit = Math.min(HORDE_LIMIT, matches.length);
+  if(ADMIN && ED && ED.id){ const ei=matches.findIndex(hd=>hd.id===ED.id); if(ei>=limit) limit=ei+1; } // Editor immer zeigen
+  let h="";
+  for(let i=0;i<limit;i++){ const hd=matches[i];
+    if(ADMIN && ED && ED.id===hd.id) h+=hordeEditorHTML();
+    else h+=renderHordeCard(hd,ADMIN);
+  }
+  if(matches.length>limit)
+    h+=`<div style="text-align:center;margin:8px 0 2px"><button class="btn" onclick="showMoreHordes()">▾ Mehr anzeigen (noch ${matches.length-limit})</button></div>`;
+  if(filtering && !matches.length) h+=`<p class="loc-note">Keine passende Horde gefunden.</p>`;
+  box.innerHTML=h;
+  // Wandelhöhlen-Karten nur bei passender Ortssuche einblenden
+  document.querySelectorAll("#view .altcard").forEach(c=>{
+    const loc=c.dataset.loc||"", okM=!MFILTER||(c.dataset.method||"").split(" ").includes(MFILTER);
+    c.style.display=(okM && lq && loc.includes(lq))?"":"none";
+  });
+  const cnt=document.getElementById("hordeCount");
+  if(cnt) cnt.textContent = filtering ? (matches.length+" Fundort"+(matches.length===1?"":"e")) : (HORDES.length+" Horden");
+  if(ADMIN && ED && ED.id){ const e=document.getElementById("hordeEditor"); if(e) e.scrollIntoView({block:"nearest"}); }
+}
+function showMoreHordes(){ HORDE_LIMIT+=40; renderHordeList(); }
+function applyHordeFilter(){ renderHordeList(); } // Kompatibilität für vorhandene Aufrufer
 
 /* ===== Spezial-Location: Wandelhöhle / Altering Cave =====================
    Wechselnde Encounter pro Ingame-Tag (Typ-Phase). 3er-Horden immer 2 Arten (50/50).
@@ -1900,16 +1918,11 @@ function renderLoc(){
   if(HORDES.length) h+=searchBarHTML();
   if(!HORDES.length && !(ADMIN&&ED)) h+=`<div class="empty">Noch keine Horden vorhanden.${ADMIN?'<br>Klick „+ Neue Horde" — oder „Beispiel einfügen", um das Format zu sehen.':' Ein Admin muss sie anlegen bzw. importieren.'}</div>`;
   ALTERING.regions.forEach((_,r)=>{ h+=alteringCardHTML(r); }); // Spezial: Wandelhöhle je Region
-  computeHordeRanks();
-  const sorted=[...HORDES].sort((a,b)=>rating(b)-rating(a));
-  for(const hd of sorted){
-    if(ADMIN && ED && ED.id===hd.id) h+=hordeEditorHTML(); // Editor an Ort der bearbeiteten Kachel
-    else h+=renderHordeCard(hd,ADMIN);
-  }
+  h+=`<div id="hordeList"></div>`;
   h+=`</div>`;
   view.innerHTML=h;
-  applyHordeFilter();
-  if(ADMIN && ED && ED.id){ const e=document.getElementById("hordeEditor"); if(e) e.scrollIntoView({block:"nearest"}); }
+  HORDE_LIMIT=40;          // beim Öffnen des Reiters wieder von vorn
+  renderHordeList();       // Karten (paginiert bzw. gefiltert) einfügen
 }
 
 function renderHordeCard(hd,edit){
