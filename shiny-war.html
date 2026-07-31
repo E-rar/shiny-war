@@ -30,7 +30,7 @@
   #lock input{width:100%;box-sizing:border-box;padding:11px 12px;border-radius:9px;border:1px solid var(--border);background:var(--panel2);color:var(--text);font-size:15px;margin-bottom:10px}
   #lock .btn.primary{width:100%;padding:11px;font-size:15px}
   #lock .lockerr{color:var(--bad);font-size:13px;margin-top:10px;min-height:18px}
-  .topbar{display:flex;align-items:center;justify-content:center;gap:18px;padding:12px 20px;
+  .topbar{position:relative;display:flex;align-items:center;justify-content:center;gap:18px;padding:12px 20px;
     background:linear-gradient(180deg,#1a2434,#12161f);border-bottom:1px solid var(--border)}
   .topbar .brand{text-align:center}
   .topbar .mascot{width:62px;height:62px;object-fit:contain;flex:0 0 auto;
@@ -107,8 +107,16 @@
   .season.active[data-s="winter"]{background:#8fd3ff}
   .season.active[data-s="all"]{background:#9aa7b8}
   .season.timechip.active{background:#b98cff;color:#10141c;border-color:transparent}
-  .mesel{background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:13px;max-width:150px;cursor:pointer}
-  .mesel:hover{border-color:var(--accent2)}
+  .usermenu{position:absolute;right:14px;top:12px;display:flex;gap:4px;align-items:center;z-index:6}
+  .usermenu .btn{padding:7px 10px;font-size:13px}
+  .usermenu .umarrow{padding:7px 9px;font-size:12px}
+  .umdrop{display:none;position:absolute;right:0;top:calc(100% + 5px);background:var(--panel);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.55);min-width:190px;max-height:320px;overflow:auto;padding:5px;z-index:30}
+  .umdrop.open{display:block}
+  .umitem{padding:7px 10px;border-radius:7px;cursor:pointer;font-size:13px;white-space:nowrap;display:flex;align-items:center;gap:6px}
+  .umitem:hover{background:var(--panel2)}
+  .umitem.sel{color:var(--accent2);font-weight:600}
+  .umsearch{width:100%;box-sizing:border-box;padding:6px 8px;margin-bottom:5px;border-radius:7px;border:1px solid var(--border);background:var(--panel2);color:var(--text);font-size:13px}
+  @media(max-width:560px){.usermenu{position:static;margin:0 auto 6px;justify-content:center}}
   .season.methchip{padding:5px 11px;font-size:12.5px}
   .season.methchip.active{background:var(--accent2);color:#10141c;border-color:transparent}
   .hlink{cursor:pointer}
@@ -221,6 +229,11 @@
 </head>
 <body>
 <header class="topbar">
+  <div class="usermenu" id="userMenu">
+    <button class="btn" onclick="openMe()" title="Zur ausgewählten Spielerseite">👤 <span id="meLbl">Meine Seite</span></button>
+    <button class="btn umarrow" onclick="toggleUserDrop(event)" aria-label="Spieler wählen" title="Spieler wählen">▾</button>
+    <div class="umdrop" id="umDrop"></div>
+  </div>
   <img class="mascot" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/shiny/400.png" alt="Shiny Bidifas" title="Shiny Bidifas" onerror="this.onerror=null;this.src='https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/400.png'">
   <div class="brand">
     <h1 style="cursor:pointer" onclick="goHome()" title="Zu den Horden – jetzt gerade"><span class="spark">✦</span> Bober Board <span class="spark">✦</span></h1>
@@ -250,9 +263,7 @@
     <div class="tab active" data-tab="loc" onclick="showTab('loc')">🗺️ Horden</div>
     <div class="tab" data-tab="tier" onclick="showTab('tier')">📋 Tierlist</div>
     <div class="tab" data-tab="stats" onclick="showTab('stats')">📈 Statistik</div>
-    <select id="meSelect" class="mesel" style="margin-left:auto;align-self:center" title="Spieler auswählen" onchange="saveMe(this.value)"></select>
-    <button class="btn" style="align-self:center" onclick="openMe()" title="Zur ausgewählten Spielerseite">👤 Meine Seite</button>
-    <button class="btn" style="align-self:center" id="langBtn" onclick="toggleLang()" title="Pokémon-Namen zwischen Deutsch und Englisch umschalten">🌐 <span id="langLbl">DE</span></button>
+    <button class="btn" style="margin-left:auto;align-self:center" id="langBtn" onclick="toggleLang()" title="Pokémon-Namen zwischen Deutsch und Englisch umschalten">🌐 <span id="langLbl">DE</span></button>
     <button class="btn" style="align-self:center" onclick="copyShareLink()" title="Aktuellen Link kopieren (Tab, Saison, Zeit, Filter)">🔗 Teilen</button>
     <button class="btn" style="align-self:center" onclick="forgetPass()" title="Sperren / Passwort ändern">🔒</button>
   </div>
@@ -1102,22 +1113,24 @@ function openUser(id){ USER_ID=String(id); TAB="user";
 function gotoHordeFromUser(slug){ RETURN_USER=USER_ID; gotoHordeSearch(slug); }
 function backToUser(){ const u=RETURN_USER; RETURN_USER=null; if(u) openUser(u); else showTab("hunt"); }
 function userLink(id){ return `<span class="ulink" onclick="openUser('${String(id)}')" title="Spieler-Details öffnen">${esc(uname(id))}</span>`; }
-/* Spieler-Auswahl oben rechts: merkt sich den ausgewählten Spieler, Button öffnet dessen Seite. */
+/* Spieler-Auswahl oben (Button + Pfeil-Dropdown): merkt sich den gewählten Spieler. */
 function loadMe(){try{return localStorage.getItem("sw_me")||""}catch(e){return""}}
 function saveMe(v){try{localStorage.setItem("sw_me",v||"")}catch(e){}}
-function renderMeSelect(){
-  const sel=document.getElementById("meSelect"); if(!sel) return;
-  const users=(typeof knownUsers==="function")?knownUsers():[];
-  const cur=sel.value||loadMe();
-  sel.innerHTML = users.length ? users.map(u=>`<option value="${esc(u.id)}">${esc(u.name)}</option>`).join("") : `<option value="">— keine Spieler —</option>`;
-  if(cur && users.some(u=>String(u.id)===String(cur))) sel.value=cur;
+function updateMeLabel(){ const el=document.getElementById("meLbl"); if(!el) return; const id=loadMe(); el.textContent=id?uname(id):"Meine Seite"; }
+function fillUserDrop(){
+  const box=document.getElementById("umDrop"); if(!box) return;
+  const users=(typeof knownUsers==="function")?knownUsers():[]; const cur=loadMe();
+  box.innerHTML = `<input class="umsearch" id="umSearch" placeholder="suchen…" oninput="filterUserDrop(this.value)">`+
+    (users.length ? users.map(u=>`<div class="umitem${String(u.id)===String(cur)?' sel':''}" data-name="${esc(u.name.toLowerCase())}" onclick="selectMe('${String(u.id)}')">👤 ${esc(u.name)}</div>`).join("")
+                  : `<div class="umitem" style="cursor:default">— keine Spieler —</div>`);
 }
-function openMe(){
-  const sel=document.getElementById("meSelect");
-  const id=(sel&&sel.value)||loadMe();
-  if(!id){ toast("Bitte oben rechts einen Spieler auswählen",true); return; }
-  saveMe(id); openUser(id);
-}
+function filterUserDrop(q){ q=(q||"").toLowerCase(); document.querySelectorAll("#umDrop .umitem[data-name]").forEach(el=>{ el.style.display=el.dataset.name.includes(q)?"":"none"; }); }
+function toggleUserDrop(e){ if(e){e.stopPropagation();} const box=document.getElementById("umDrop"); if(!box) return;
+  const open=box.classList.toggle("open"); if(open){ fillUserDrop(); const s=document.getElementById("umSearch"); if(s) s.focus(); } }
+function closeUserDrop(){ const box=document.getElementById("umDrop"); if(box) box.classList.remove("open"); }
+function selectMe(id){ saveMe(id); updateMeLabel(); closeUserDrop(); openUser(id); }
+function openMe(){ const id=loadMe(); if(!id){ toggleUserDrop(); return; } openUser(id); }
+document.addEventListener("click",e=>{ const m=document.getElementById("userMenu"); if(m && !m.contains(e.target)) closeUserDrop(); });
 
 /* ============================================================
    "JETZT GERADE" — Saison & Tageszeit aus Echtzeit/Ingame-Zeit
@@ -1221,7 +1234,7 @@ function copyShareLink(){
 
 function render(){
   writeUrl();
-  renderMeSelect();
+  updateMeLabel();
   if(TAB==="lb") return renderLeaderboard();
   if(TAB==="hunt") return renderHunt();
   if(TAB==="tier") return renderTierlist();
