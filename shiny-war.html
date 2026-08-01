@@ -2115,11 +2115,12 @@ async function exportHordes(){
 }
 async function exportHunts(){
   if(!PASS){ toast("Kein Passwort gesetzt — erst entsperren",true); return; }
-  // DATA inkl. manueller Overlays (Spieler + Fänge) zusammenführen
+  // DATA inkl. manueller Overlays (Spieler + Fänge) zusammenführen.
+  // WICHTIG: IDs als Strings belassen! Ein Umwandeln in Zahlen würde 18-stellige
+  // Discord-IDs runden (JS-Präzision) -> Namen weg + doppelte User. Die App liest
+  // die .enc ohnehin mit quoteBigInts, der Bot nutzt sie nicht.
   const merged={ active:DATA.active||{}, caught:allCaught(), users:Object.assign({}, DATA.users||{}, EXTRA_USERS||{}) };
-  // IDs wieder als Zahlen (bot-kompatibel), dann verschlüsseln
-  const t=JSON.stringify(merged).replace(/"(\d{16,})"(?!\s*:)/g,'$1');
-  const enc=await encJSON(JSON.parse(t),PASS);
+  const enc=await encJSON(merged,PASS);
   dlBlob(enc,"hunts.json.enc");
   toast("⬇ hunts.json.enc (mit manuellen Einträgen) exportiert");
 }
