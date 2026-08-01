@@ -1631,9 +1631,12 @@ function esc(s){return (s==null?"":String(s)).replace(/&/g,"&amp;").replace(/</g
 function hordeDangers(hd){
   const out=[];
   for(const m of (hd.members||[])){
+    if(activePct(m)<=0) continue;                       // nur Mons, die JETZT (Saison/Zeit/Lure) in der Karte stehen
     const dm=DANGER_MOVES[norm(m.name)]; if(!dm||!dm.length) continue;
-    const lv=Number(m.lvMax)||0;
-    const hit=dm.filter(x=> !lv || (Number(x.lvl)||0)<=lv); // ohne Level-Info -> alle
+    const hi=Number(m.lvMax)||0; if(!hi) continue;       // ohne Level-Info nicht raten
+    const lo=Number(m.lvMin)||hi;
+    // Move ist irgendwo in [lo,hi] in den letzten 4: Range überschneidet [lvl, out)
+    const hit=dm.filter(x=> hi>=x.lvl && lo < (x.out||999));
     if(hit.length) out.push({name:memName(m.name), moves:hit});
   }
   return out;
@@ -2172,7 +2175,7 @@ function applyHordes(arr){
       members:(h.members||[]).map(m=>{
         let s=m.s;
         if((!s||!Object.keys(s).length) && m.p!=null){const v=Number(m.p)||0; s={fruehling:v,sommer:v,herbst:v,winter:v};}
-        return {name:m.name||"",s:s||{},tod:m.tod||"immer",lure:!!m.lure,lvMax:Number(m.lvMax)||0};
+        return {name:m.name||"",s:s||{},tod:m.tod||"immer",lure:!!m.lure,lvMin:Number(m.lvMin)||0,lvMax:Number(m.lvMax)||0};
       })};
   });
   saveHordes(); setHordesDirty(false); // Import/Repo = bekannter Stand -> sauber
@@ -2244,18 +2247,19 @@ function convertMonsterDump(arr){
       let spot=spots.get(key);
       if(!spot){ spot={loc:place,region,method,hab:dumpHab(loc.type),typeNote:dumpTypeNote(loc.type),members:new Map(),levels:new Set()}; spots.set(key,spot); }
       let mem=spot.members.get(name);
-      if(!mem){ mem={name,s:{},tod:null,lure:false,lvMax:0}; spot.members.set(name,mem); }
+      if(!mem){ mem={name,s:{},tod:null,lure:false,lvMin:0,lvMax:0}; spot.members.set(name,mem); }
       const pct=isHorde?dumpHordePct(loc):dumpSinglePct(loc);
       for(const se of dumpSeasons(loc.season)) mem.s[se]=Math.max(mem.s[se]||0,pct);
       mem.tod=dumpCombineTod(mem.tod,dumpTod(loc));
       if(dumpIsLure(loc)) mem.lure=true;
       if(loc.max_level!=null) mem.lvMax=Math.max(mem.lvMax||0, Number(loc.max_level)||0);
+      if(loc.min_level!=null) mem.lvMin = mem.lvMin ? Math.min(mem.lvMin, Number(loc.min_level)||0) : (Number(loc.min_level)||0);
       if(loc.min_level!=null&&loc.max_level!=null) spot.levels.add(loc.min_level+"-"+loc.max_level);
     }
   }
   const out=[];
   for(const spot of spots.values()){
-    const members=[...spot.members.values()].map(m=>({name:m.name,s:m.s,tod:m.tod||"immer",lure:!!m.lure,lvMax:m.lvMax||0}));
+    const members=[...spot.members.values()].map(m=>({name:m.name,s:m.s,tod:m.tod||"immer",lure:!!m.lure,lvMin:m.lvMin||0,lvMax:m.lvMax||0}));
     if(!members.length) continue;
     const parts=[];
     if(spot.typeNote) parts.push(spot.typeNote);
@@ -2289,22 +2293,24 @@ function runDumpImport(o){
   exportDanger(); // gefährliche Attacken als danger_moves.json herunterladen (fürs Repo)
   render(); return true;
 }
-/* Aus dem Dump je Art die gefährlichen LEVEL-Attacken (mit Level) erfassen. */
+/* Aus dem Dump je Art die gefährlichen LEVEL-Attacken erfassen — mit Bekannt-Fenster:
+   Ein Mon kennt nur die 4 zuletzt gelernten Level-Attacken. lvl = Lernlevel,
+   out = Level, ab dem der Move von 4 neueren verdrängt ist (Level der (i+4)-ten Attacke). */
 function buildDangerFromDump(arr){
-  const out={}; let n=0;
+  const out={};
   for(const mon of arr){
     const nm=(mon&&mon.name||"").trim(); if(!nm) continue;
+    const lvlMoves=(mon.moves||[]).filter(mv=>String(mv.type||"").toLowerCase()==="level")
+      .map(mv=>({name:mv.name, lvl:Number(mv.level)||0})).sort((a,b)=>a.lvl-b.lvl);
     const list=[];
-    for(const mv of (mon.moves||[])){
-      const t=String(mv.type||"").toLowerCase();
-      if(t!=="level") continue;                    // nur Level-Lernpool
-      const cat=DANGER_CAT[norm(mv.name)]; if(!cat) continue;
-      list.push({m:mv.name, lvl:Number(mv.level)||0, cat});
+    for(let i=0;i<lvlMoves.length;i++){
+      const cat=DANGER_CAT[norm(lvlMoves[i].name)]; if(!cat) continue;
+      const outLvl = (i+4 < lvlMoves.length) ? lvlMoves[i+4].lvl : 999; // ab hier aus den letzten 4 raus
+      list.push({m:lvlMoves[i].name, lvl:lvlMoves[i].lvl, out:outLvl, cat});
     }
-    if(list.length){ out[norm(nm)]=list; n+=list.length; }
+    if(list.length) out[norm(nm)]=list;
   }
   DANGER_MOVES=out; saveDanger();
-  return n;
 }
 function exportDanger(){
   if(!Object.keys(DANGER_MOVES).length) return;
