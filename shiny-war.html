@@ -1365,7 +1365,8 @@ function renderLeaderboard(){
     <p class="hint" style="margin-top:-6px">Regeln: Erst-Fang einer Linie = Tier-Punkte, Team-Erstfang <span style="color:var(--good)">+8</span>, Duplikat <span class="ktag">+1</span>. Sonderfälle: Legendär/Mythos 200 · Alpha 75 · Egg max(35, Tier) · Secret +20 · Safari +10.</p>`;
   if(ADMIN) h+=`<div class="bar" style="justify-content:flex-start;margin:0 0 10px">
       <button class="btn" onclick="addUserPrompt()">👤 + Spieler</button>
-      <button class="btn primary" onclick="openAddCatch()">✨ + Fang</button></div>`;
+      <button class="btn primary" onclick="openAddCatch()">✨ + Fang</button>
+      ${(Object.keys(EXTRA_USERS).length||EXTRA_CATCHES.length)?`<button class="btn" style="color:var(--bad);border-color:var(--bad)" onclick="clearOverlay()" title="Lokale manuelle Spieler/Fänge entfernen">🧹 Overlay leeren</button>`:""}</div>`;
   if(ADMIN && ADD_CATCH!=null) h+=addCatchHTML();
   if(ADMIN && CEDIT!=null) h+=catchEditorHTML();
   if(!rows.length){ h+=`<div class="empty">Noch keine Spieler/Fänge in den Daten.</div></div>`; view.innerHTML=h; return; }
@@ -1589,6 +1590,14 @@ function renderUserHordes(userId){
   setScorePerspective(null); SEASON=sS; TOD=sT; // zurücksetzen
 }
 function showMoreUserHordes(){ USER_HORDE_LIMIT+=40; renderUserHordes(USER_ID); }
+/* Alle lokal (im Browser-Overlay) manuell angelegten Spieler + Fänge entfernen. */
+function clearOverlay(){
+  const nu=Object.keys(EXTRA_USERS||{}).length, nc=(EXTRA_CATCHES||[]).length;
+  if(!nu && !nc){ toast("Kein Overlay vorhanden"); return; }
+  if(!confirm("Alle lokal (im Browser) manuell hinzugefügten Spieler ("+nu+") und Fänge ("+nc+") entfernen?\nDie in der hunts.json/Bot-Daten bleiben erhalten."))return;
+  EXTRA_USERS={}; EXTRA_CATCHES=[]; saveExtraUsers(); saveExtraCatches(); refreshCaughtLines();
+  toast("🧹 Overlay geleert"); render();
+}
 function renderUser(){
   if(!USER_ID){ TAB="lb"; return renderLeaderboard(); }
   const id=String(USER_ID), name=uname(id);
