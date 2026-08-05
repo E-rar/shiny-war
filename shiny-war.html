@@ -164,7 +164,9 @@
   .hcard.ranked{padding-left:46px}
   .dangerbadge{background:rgba(248,81,73,.16);border:1px solid var(--bad);color:var(--bad);cursor:help}
   .chartwrap{overflow-x:auto;margin:6px 0 2px}
-  .stleg{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;margin-right:12px}
+  .stleg{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;margin-right:12px;cursor:pointer;user-select:none}
+  .stleg:hover{opacity:.75}
+  .stleg.off{opacity:.4;text-decoration:line-through}
   .tl{display:flex;flex-direction:column;gap:2px}
   .tlrow{display:flex;align-items:center;gap:10px}
   .tldate{flex:0 0 74px;text-align:right;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
@@ -1411,6 +1413,9 @@ function renderHunt(){
 
 /* ---------- Spieler-Statistik ---------- */
 const STAT_PALETTE=["#7bd88f","#ffd23f","#4aa3ff","#ff9f45","#c678dd","#e23b3b","#5fd0c0","#f078a8","#a0d468","#b0895a"];
+let HIDDEN_CURVES=new Set(); // Spieler-IDs, deren Kurve in der Statistik ausgeblendet ist
+function toggleCurve(id){ id=String(id); if(HIDDEN_CURVES.has(id)) HIDDEN_CURVES.delete(id); else HIDDEN_CURVES.add(id); renderStats(); }
+function resetCurves(){ HIDDEN_CURVES.clear(); renderStats(); }
 function statEvents(){
   const all=computeScores().rows;
   const rows=all.filter(r=>(r.catches||[]).length); // nur Spieler mit Fängen im Diagramm
@@ -1428,7 +1433,7 @@ function statChartSVG(ev,rows,colorOf){
   const cum={},series={}; rows.forEach(r=>{cum[r.id]=0;series[r.id]=[];});
   let maxY=1;
   ev.forEach(e=>{ cum[e.id]+=e.total; rows.forEach(r=>series[r.id].push(cum[r.id])); });
-  rows.forEach(r=>{maxY=Math.max(maxY,cum[r.id]);});
+  rows.forEach(r=>{ if(!HIDDEN_CURVES.has(String(r.id))) maxY=Math.max(maxY,cum[r.id]); }); // y-Achse nur nach sichtbaren
   const yScale=v=> padT+(H-padT-padB)*(1-v/maxY);
   let g="";
   for(let k=0;k<=4;k++){ const val=Math.round(maxY*k/4), y=yScale(val);
@@ -1442,16 +1447,21 @@ function statChartSVG(ev,rows,colorOf){
        `<text x="${x}" y="${H-padB+14}" text-anchor="middle" font-size="9" fill="var(--muted)" transform="rotate(0 ${x} ${H-padB+14})">${esc(e.date.slice(5))}</text>`;
   }});
   let lines="";
-  rows.forEach(r=>{ const col=colorOf[r.id]; const s=series[r.id];
+  rows.forEach(r=>{ if(HIDDEN_CURVES.has(String(r.id))) return; // versteckte Kurve nicht zeichnen
+    const col=colorOf[r.id]; const s=series[r.id];
     if(s.length>1){ const pts=s.map((v,i)=>`${xs(i).toFixed(1)},${yScale(v).toFixed(1)}`).join(" ");
       lines+=`<polyline points="${pts}" fill="none" stroke="${col}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`; }
     const li=s.length-1;
     lines+=`<circle cx="${xs(li).toFixed(1)}" cy="${yScale(s[li]).toFixed(1)}" r="3.2" fill="${col}"/>`;
   });
-  const legend=rows.map(r=>`<span class="stleg"><span class="dot" style="background:${colorOf[r.id]}"></span>${userLink(r.id)} <b>${cum[r.id]}</b></span>`).join("");
+  const legend=rows.map(r=>{ const off=HIDDEN_CURVES.has(String(r.id));
+    return `<span class="stleg${off?' off':''}" onclick="toggleCurve('${String(r.id)}')" title="Kurve ein-/ausblenden"><span class="dot" style="background:${colorOf[r.id]}"></span>${esc(uname(r.id))} <b>${cum[r.id]}</b></span>`;
+  }).join("");
+  const reset = HIDDEN_CURVES.size ? `<span class="stleg" style="color:var(--accent2)" onclick="resetCurves()" title="Alle Kurven einblenden">↺ alle</span>` : "";
   return `<div class="chartwrap"><svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;max-width:${W}px" xmlns="http://www.w3.org/2000/svg">
     ${g}<line x1="${padL}" y1="${H-padB}" x2="${W-padR}" y2="${H-padB}" stroke="var(--border)" stroke-width="1.5"/>${lines}</svg></div>
-    <div class="legend" style="justify-content:flex-start">${legend}</div>`;
+    <p class="hint" style="margin:2px 0 4px">Klick auf einen Namen blendet die Kurve ein/aus.</p>
+    <div class="legend" style="justify-content:flex-start">${legend} ${reset}</div>`;
 }
 function renderStats(){
   const {rows,colorOf,ev}=statEvents();
