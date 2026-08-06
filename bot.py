@@ -139,11 +139,20 @@ def _run_git_push() -> None:
         subprocess.run(["git", "add", "hunts.json.enc"], cwd=REPO_DIR, check=True)
         # Nur committen, wenn es tatsächlich Änderungen gibt.
         if subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=REPO_DIR).returncode == 0:
-            return
-        stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
-        subprocess.run(["git", "commit", "-m", f"Update hunts.json.enc ({stamp})"], cwd=REPO_DIR, check=True)
-        subprocess.run(["git", "push"], cwd=REPO_DIR, check=True)
-        print("✅ hunts.json ins Repo gepusht.")
+            has_local = False
+        else:
+            stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
+            subprocess.run(["git", "commit", "-m", f"Update hunts.json.enc ({stamp})"], cwd=REPO_DIR, check=True)
+            has_local = True
+        # Erst Remote-Änderungen einbauen (verhindert 'non-fast-forward' -> Push wird sonst abgelehnt),
+        # dann pushen. So bleibt der Zwei-Wege-Betrieb (du pushst Code, Bot pusht Daten) reibungslos.
+        subprocess.run(["git", "pull", "--rebase", "--autostash"], cwd=REPO_DIR)
+        # Auch pushen, wenn keine neue lokale Änderung war, aber noch unveröffentlichte Commits anstehen.
+        ahead = subprocess.run(["git", "rev-list", "--count", "@{u}..HEAD"], cwd=REPO_DIR,
+                               capture_output=True, text=True).stdout.strip()
+        if has_local or (ahead and ahead != "0"):
+            subprocess.run(["git", "push"], cwd=REPO_DIR, check=True)
+            print("✅ hunts.json.enc ins Repo gepusht.")
     except Exception as e:
         print(f"⚠️  Git-Push fehlgeschlagen: {e}")
 
