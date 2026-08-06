@@ -2440,7 +2440,8 @@ async function loadRepoData(){
   }
   // Hunts (verschlüsselt) – immer der neueste Bot-Stand
   try{ const r=await fetch(REPO_HUNTS_ENC+"?t="+Date.now());
-    if(r.ok){ const j=parseHunts(await decEnc(await r.json(),PASS)); if(j&&(j.active||j.caught)){ DATA=j; saveData(); if(j.users){Object.assign(NAMES,j.users);saveNames();} } } }catch(e){}
+    if(r.ok){ const j=parseHunts(await decEnc(await r.json(),PASS)); if(j&&(j.active||j.caught)){ DATA=j; saveData(); if(j.users){Object.assign(NAMES,j.users);saveNames();} } }
+  }catch(e){ console.warn("⚠ hunts.json.enc konnte NICHT entschlüsselt/geladen werden (Passwort ≠ BOARD_PASSWORD des Bots?):",e&&e.message||e); }
   refreshCaughtLines(); render();
 }
 async function pullRepo(){ // Admin-Button: verschlüsselte Repo-Horden manuell laden
