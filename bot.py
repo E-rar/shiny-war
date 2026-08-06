@@ -32,13 +32,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 TOKEN = os.getenv("DISCORD_TOKEN")
-DATA_FILE = Path(__file__).parent / "hunts.json"        # Klartext, bleibt LOKAL (gitignored)
-ENC_FILE = Path(__file__).parent / "hunts.json.enc"     # verschlüsselt, DAS kommt ins Repo
+DATA_FILE = Path(__file__).parent / "hunts.json"        # Klartext – kommt ins Repo (öffentliches Board)
 
-# Gemeinsames Board-Passwort (Zugangsschutz Variante 2). Muss identisch zum sein,
-# was Nutzer in der Web-App eingeben. Der Bot verschlüsselt damit hunts.json.enc
-# und verteilt es per /zugang. Ohne Passwort wird NICHT verschlüsselt (Setup-Modus).
-BOARD_PASSWORD = os.getenv("BOARD_PASSWORD", "")
+# Optionaler Link zum Board (für /zugang). Z. B. https://<user>.github.io/<repo>/
+BOARD_URL = os.getenv("BOARD_URL", "")
 
 # ID des Text-Channels, in dem der Bot ausschließlich reagieren soll.
 # 0 = Einschränkung deaktiviert (Bot reagiert überall).
@@ -113,13 +110,9 @@ def encrypt_json(obj: dict, password: str) -> dict:
 
 
 def save_data(data: dict) -> None:
-    # Klartext lokal (privat, wird NICHT ins Repo committet)
+    # Öffentliches Board (Klartext): hunts.json wird direkt ins Repo committet.
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
-    # Verschlüsselte Fassung fürs Repo (nur wenn ein Board-Passwort gesetzt ist)
-    if BOARD_PASSWORD:
-        with open(ENC_FILE, "w", encoding="utf-8") as f:
-            json.dump(encrypt_json(data, BOARD_PASSWORD), f)
 
 
 # ---------------------------------------------------------------------------
@@ -135,14 +128,14 @@ _push_task = None
 def _run_git_push() -> None:
     """Blockierender Git-Teil (läuft in einem Thread, damit der Bot nicht hängt)."""
     try:
-        # Nur die VERSCHLÜSSELTE Datei ins Repo (die Klartext-hunts.json bleibt lokal/gitignored).
-        subprocess.run(["git", "add", "hunts.json.enc"], cwd=REPO_DIR, check=True)
+        # Klartext-Daten ins Repo (öffentliches Board).
+        subprocess.run(["git", "add", "hunts.json"], cwd=REPO_DIR, check=True)
         # Nur committen, wenn es tatsächlich Änderungen gibt.
         if subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=REPO_DIR).returncode == 0:
             has_local = False
         else:
             stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
-            subprocess.run(["git", "commit", "-m", f"Update hunts.json.enc ({stamp})"], cwd=REPO_DIR, check=True)
+            subprocess.run(["git", "commit", "-m", f"Update hunts.json ({stamp})"], cwd=REPO_DIR, check=True)
             has_local = True
         # Erst Remote-Änderungen einbauen (verhindert 'non-fast-forward' -> Push wird sonst abgelehnt),
         # dann pushen. So bleibt der Zwei-Wege-Betrieb (du pushst Code, Bot pusht Daten) reibungslos.
@@ -152,7 +145,7 @@ def _run_git_push() -> None:
                                capture_output=True, text=True).stdout.strip()
         if has_local or (ahead and ahead != "0"):
             subprocess.run(["git", "push"], cwd=REPO_DIR, check=True)
-            print("✅ hunts.json.enc ins Repo gepusht.")
+            print("✅ hunts.json ins Repo gepusht.")
     except Exception as e:
         print(f"⚠️  Git-Push fehlgeschlagen: {e}")
 
@@ -515,27 +508,12 @@ async def caughtlist(interaction: discord.Interaction):
     await interaction.response.send_message(text)
 
 
-@bot.tree.command(name="zugang", description="Bekomme das Passwort für das Bober Board (per DM).")
+@bot.tree.command(name="zugang", description="Link zum Bober Board.")
 async def zugang(interaction: discord.Interaction):
-    if not BOARD_PASSWORD:
-        await interaction.response.send_message(
-            "Es ist noch kein Board-Passwort eingerichtet.", ephemeral=True
-        )
-        return
-    try:
-        await interaction.user.send(
-            "🔒 **Bober Board – Zugang**\n"
-            f"Passwort: `{BOARD_PASSWORD}`\n"
-            "Öffne die Seite und gib es einmal ein. Bitte nicht weitergeben 🙂"
-        )
-        await interaction.response.send_message(
-            "📩 Ich hab dir das Passwort per DM geschickt!", ephemeral=True
-        )
-    except discord.Forbidden:
-        await interaction.response.send_message(
-            "❌ Ich kann dir keine DM schicken – bitte erlaube Direktnachrichten von Server-Mitgliedern und versuch es nochmal.",
-            ephemeral=True,
-        )
+    msg = "🦫 **Bober Board**\nOffen für alle – einfach öffnen, kein Passwort nötig."
+    if BOARD_URL:
+        msg += f"\n{BOARD_URL}"
+    await interaction.response.send_message(msg, ephemeral=True)
 
 
 @bot.tree.command(name="syncnamen", description="Ergänzt fehlende Spieler-Namen fürs Leaderboard (Admin/Backfill).")

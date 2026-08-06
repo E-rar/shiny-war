@@ -7,10 +7,8 @@ __pycache__/
 .venv/
 venv/
 
-# Zugangsschutz (Variante 2): Klartext-Daten bleiben LOKAL, nur die
-# verschlüsselten *.enc kommen ins Repo. hunts.json.enc wird NICHT ignoriert.
-hunts.json
-hordes.json
+# Öffentliches Board (Klartext): hunts.json (Bot) und hordes.json (Admin-Export)
+# werden bewusst mit ins Repo committet, damit alle denselben Stand sehen.
 
 # --- OS-Müll ---
 .DS_Store

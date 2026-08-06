@@ -268,7 +268,6 @@
     <div class="tab" data-tab="stats" onclick="showTab('stats')">📈 Statistik</div>
     <button class="btn" style="margin-left:auto;align-self:center" id="langBtn" onclick="toggleLang()" title="Pokémon-Namen zwischen Deutsch und Englisch umschalten">🌐 <span id="langLbl">DE</span></button>
     <button class="btn" style="align-self:center" onclick="copyShareLink()" title="Aktuellen Link kopieren (Tab, Saison, Zeit, Filter)">🔗 Teilen</button>
-    <button class="btn" style="align-self:center" onclick="forgetPass()" title="Sperren / Passwort ändern">🔒</button>
   </div>
 
   <div id="view"></div>
@@ -276,7 +275,7 @@
 <div id="toast"></div>
 <button id="toTop" title="Nach oben" aria-label="Nach oben" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
 
-<div id="lock">
+<div id="lock" style="display:none">
   <div class="lockbox">
     <img class="mascot" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/shiny/400.png" alt="" onerror="this.onerror=null;this.src='https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/400.png'">
     <h2>🔒 Bober Board</h2>
@@ -2175,23 +2174,21 @@ function duplicateHorde(id){
 }
 
 function dlBlob(obj,name){const blob=new Blob([JSON.stringify(obj)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();}
-async function exportHordes(){
-  if(!PASS){ toast("Kein Passwort gesetzt — erst entsperren",true); return; }
-  const enc=await encJSON({hordes:HORDES},PASS);
-  dlBlob(enc,"hordes.json.enc");
+function dlText(txt,name){const blob=new Blob([txt],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();}
+function exportHordes(){
+  dlText(JSON.stringify({hordes:HORDES},null,2),"hordes.json");
   setHordesDirty(false); // veröffentlicht -> nicht mehr "dirty"
-  toast("⬇ hordes.json.enc (verschlüsselt) — jetzt ins Repo committen"); render();
+  toast("⬇ hordes.json — jetzt ins Repo committen"); render();
 }
-async function exportHunts(){
-  if(!PASS){ toast("Kein Passwort gesetzt — erst entsperren",true); return; }
+function exportHunts(){
   // DATA inkl. manueller Overlays (Spieler + Fänge) zusammenführen.
-  // WICHTIG: IDs als Strings belassen! Ein Umwandeln in Zahlen würde 18-stellige
-  // Discord-IDs runden (JS-Präzision) -> Namen weg + doppelte User. Die App liest
-  // die .enc ohnehin mit quoteBigInts, der Bot nutzt sie nicht.
+  // WICHTIG: nur die 18-stelligen ID-WERTE entquoten (Zahlen für den Bot);
+  // die ID-SCHLÜSSEL in users bleiben Strings (JSON-Keys). Kein JSON.parse hier,
+  // damit die Präzision der langen Discord-IDs nicht verloren geht.
   const merged={ active:DATA.active||{}, caught:allCaught(), users:Object.assign({}, DATA.users||{}, EXTRA_USERS||{}) };
-  const enc=await encJSON(merged,PASS);
-  dlBlob(enc,"hunts.json.enc");
-  toast("⬇ hunts.json.enc (mit manuellen Einträgen) exportiert");
+  const txt=JSON.stringify(merged,null,2).replace(/"(\d{16,})"(?!\s*:)/g,'$1');
+  dlText(txt,"hunts.json");
+  toast("⬇ hunts.json (mit manuellen Einträgen) exportiert");
 }
 /* Rohes Horden-Array in HORDES übernehmen (von Import ODER Repo-Auto-Load genutzt) */
 function applyHordes(arr){
@@ -2433,21 +2430,21 @@ async function loadRepoData(){
   // Gefahren-DB (riskante Level-Attacken) laden, falls im Repo veröffentlicht
   try{ const r=await fetch(REPO_DANGER_URL+"?t="+Date.now());
     if(r.ok){ const j=await r.json(); if(j&&typeof j==="object"&&!Array.isArray(j)){ DANGER_MOVES=j; saveDanger(); } } }catch(e){}
-  // Horden (verschlüsselt) laden, AUSSER es gibt ungespeicherte lokale Änderungen (dirty)
+  // Horden (Klartext) laden, AUSSER es gibt ungespeicherte lokale Änderungen (dirty)
   if(!hordesDirty() && (!ADMIN || !HORDES.length)){
-    try{ const r=await fetch(REPO_HORDES_ENC+"?t="+Date.now());
-      if(r.ok){ const txt=await decEnc(await r.json(),PASS); const j=JSON.parse(txt); const arr=Array.isArray(j)?j:(j.hordes||[]); if(arr.length) applyHordes(arr); } }catch(e){}
+    try{ const r=await fetch(REPO_HORDES_URL+"?t="+Date.now());
+      if(r.ok){ const j=await r.json(); const arr=Array.isArray(j)?j:(j.hordes||[]); if(arr.length) applyHordes(arr); } }catch(e){}
   }
-  // Hunts (verschlüsselt) – immer der neueste Bot-Stand
-  try{ const r=await fetch(REPO_HUNTS_ENC+"?t="+Date.now());
-    if(r.ok){ const j=parseHunts(await decEnc(await r.json(),PASS)); if(j&&(j.active||j.caught)){ DATA=j; saveData(); if(j.users){Object.assign(NAMES,j.users);saveNames();} } }
-  }catch(e){ console.warn("⚠ hunts.json.enc konnte NICHT entschlüsselt/geladen werden (Passwort ≠ BOARD_PASSWORD des Bots?):",e&&e.message||e); }
+  // Hunts (Klartext) – immer der neueste Bot-Stand
+  try{ const r=await fetch(REPO_HUNTS_URL+"?t="+Date.now());
+    if(r.ok){ const j=parseHunts(await r.text()); if(j&&(j.active||j.caught)){ DATA=j; saveData(); if(j.users){Object.assign(NAMES,j.users);saveNames();} } }
+  }catch(e){ console.warn("⚠ hunts.json konnte NICHT geladen werden:",e&&e.message||e); }
   refreshCaughtLines(); render();
 }
-async function pullRepo(){ // Admin-Button: verschlüsselte Repo-Horden manuell laden
-  try{ const r=await fetch(REPO_HORDES_ENC+"?t="+Date.now());
-    if(r.ok){ const j=JSON.parse(await decEnc(await r.json(),PASS)); const arr=Array.isArray(j)?j:(j.hordes||[]); applyHordes(arr); ED=null; toast("⟳ "+HORDES.length+" Horden aus Repo geladen"); render(); return; } }catch(e){}
-  toast("✗ Repo-Horden nicht erreichbar oder Passwort falsch",true);
+async function pullRepo(){ // Admin-Button: Repo-Horden (Klartext) manuell laden
+  try{ const r=await fetch(REPO_HORDES_URL+"?t="+Date.now());
+    if(r.ok){ const j=await r.json(); const arr=Array.isArray(j)?j:(j.hordes||[]); applyHordes(arr); ED=null; toast("⟳ "+HORDES.length+" Horden aus Repo geladen"); render(); return; } }catch(e){}
+  toast("✗ Repo-Horden nicht erreichbar",true);
 }
 function seedExampleHorde(){
   HORDES.push({id:"h"+Date.now().toString(36),loc:"Beispiel: Route 119",region:"Hoenn",method:"horde5",hab:"gras",
@@ -2573,9 +2570,8 @@ applyAdminUI();
 renderSeasonBar();
 render();
 fetchPkmnIndex(); // holt einmalig Dex-IDs von der PokeAPI für Bilder (danach gecacht)
-// Zugangsschutz: gehostet -> Passwort-Sperre; lokal geöffnet -> ohne Sperre (aber auch ohne Repo-Daten)
-if(location.protocol.startsWith("http")){ startGate(); }
-else { hideLock(); loadRepoData(); }
+// Öffentliches Board (Klartext) – kein Passwort mehr, direkt laden
+hideLock(); loadRepoData();
 setInterval(updateNowInfo,30000); // Ingame-Uhr in der Season-Bar live halten
 
 /* Nach-oben-Button: sichtbar ab 1,5 Bildschirmhöhen Scroll */
