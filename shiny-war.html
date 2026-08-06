@@ -1753,15 +1753,17 @@ function effPoints(name){ const l=resolve(name); if(!l) return 0; const k=norm(l
    Bsp.: Magmar nur morgens/mittags -> nachts fällt er raus, Luxio wird auf 100% hochskaliert. */
 function activeMembers(hd){
   const vis=(hd.members||[]).map(m=>({...m,raw:activePct(m),line:resolve(m.name)})).filter(m=>m.raw>0);
-  // Zeitgebundene Mons (tod≠immer) und Lure-Mons behalten ihren %-Wert fest.
-  // „Immer"-Mons sind Füller: sie teilen sich den Rest auf 100% auf.
-  // Bsp.: Nacht-Mon 60% + Immer-Mon -> nachts 60/40; tagsüber (Nacht-Mon weg) füllt der Immer-Mon 100%.
-  const isFixed=m=> ((m.tod||"immer")!=="immer") || m.lure;
-  const fillers=vis.filter(m=>!isFixed(m));
-  const fixedSum=vis.filter(isFixed).reduce((s,m)=>s+m.raw,0);
-  if(fillers.length && fixedSum<100){
+  // Zeit-Breite: der/die aktiven Mons mit der BREITESTEN Verfügbarkeit sind Füller (füllen den
+  // Rest auf 100%), zeitlich engere behalten ihren %-Wert. immer(3) > Tag(2, deckt Morgen+Tag) >
+  // Morgen/Nacht(1); Lure = immer fest. Bsp.: Morgen-Mon 60% + Tag-Mon -> morgens 60/40, mittags 100%.
+  const breadth=m=> m.lure? -1 : ((m.tod||"immer")==="immer"?3:((m.tod==="tag")?2:1));
+  const maxB=vis.reduce((mx,m)=>Math.max(mx,breadth(m)),-1);
+  const fillers=vis.filter(m=>breadth(m)===maxB && maxB>=0);
+  const fixed=vis.filter(m=>!fillers.includes(m));
+  const fixedSum=fixed.reduce((s,m)=>s+m.raw,0);
+  if(fillers.length && fixed.length && fixedSum<100){
     const remainder=100-fixedSum, fSum=fillers.reduce((s,m)=>s+m.raw,0)||1;
-    vis.forEach(m=>{ m.frac=(isFixed(m)? m.raw : remainder*(m.raw/fSum))/100; });
+    vis.forEach(m=>{ m.frac=(fillers.includes(m)? remainder*(m.raw/fSum) : m.raw)/100; });
   } else {
     const sum=vis.reduce((s,m)=>s+m.raw,0)||1;
     vis.forEach(m=>{ m.frac=m.raw/sum; });
