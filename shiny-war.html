@@ -180,6 +180,11 @@
   .hcard.best{outline:2px solid #3fb950;outline-offset:1px;animation:bestGlow 2.2s ease-in-out infinite}
   @keyframes bestGlow{0%,100%{outline-color:#3fb950;filter:drop-shadow(0 0 4px rgba(63,185,80,.4))}50%{outline-color:#ffd23f;filter:drop-shadow(0 0 13px rgba(255,210,63,.75))}}
   .bestcombo{display:inline-flex;align-items:center;gap:5px;background:rgba(63,185,80,.14);border:1px solid var(--good);color:var(--good);border-radius:8px;padding:2px 8px;font-size:12px;font-weight:600}
+  .pribadge{display:inline-flex;align-items:center;gap:5px;border-radius:8px;padding:2px 8px;font-size:12px;font-weight:600;cursor:help;border:1px solid var(--border);background:var(--panel)}
+  .pribadge.red{background:rgba(248,81,73,.16);border-color:var(--bad);color:var(--bad)}
+  .pribadge.yellow{background:rgba(255,207,92,.16);border-color:#e0a93f;color:#e0a93f}
+  .pribadge.green{background:rgba(63,185,80,.14);border-color:var(--good);color:var(--good)}
+  .pribadge.white{background:var(--panel);border-color:var(--border);color:var(--muted)}
   .hcard h3{margin:0 0 2px;font-size:15px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .hcard .loc-note{color:var(--muted);font-size:12.5px;margin:0 0 10px}
   .hactions{margin-left:auto;display:flex;gap:6px}
@@ -1779,7 +1784,8 @@ function activeMembers(hd){
 /* Cache für den Ø-Wert je Horde+Filter (Saison/Zeit/Lure). Wird bei Daten-/Fang-Änderungen geleert.
    Beschleunigt Sortieren, Ranking und Karten-Rendering bei sehr vielen Horden enorm. */
 let _evCache={};
-function bumpRatingCache(){ _evCache={}; }
+let _prioCache={};
+function bumpRatingCache(){ _evCache={}; _prioCache={}; }
 function effExpValue(hd){
   if(!hd.id) return activeMembers(hd).reduce((s,m)=>s+m.frac*effPoints(m.name),0);
   const k=hd.id+"|"+SEASON+"|"+TOD+"|"+(LURE_ON?1:0)+"|"+(SCORE_FOR||"");
@@ -1788,10 +1794,67 @@ function effExpValue(hd){
   return v;
 }
 
+/* ===== Season-Empfehlung + Prioritäts-Ampel =============================
+   Idee (Opportunitätskosten): die aktuelle Ingame-Saison nicht mit einem Target
+   "verbrennen", das man auch später noch gut bekommt. Für jede Horde die Bewertung
+   je Saison (Bestwert über alle Tageszeiten) ermitteln, daraus die "guten Fenster"
+   (>= 70% des Saison-Peaks) und relativ zur AKTUELLEN Saison einordnen:
+     🔴 Jetzt  – jetzt gut & danach lange kein gutes Fenster (nur 1 Saison)
+     🟡 Bald   – jetzt/nächste Saison gut, aber auf ~2 Seasons begrenzt
+     🟢 Jederzeit – in ≥3 Seasons stark, kein Zeitdruck
+     ⚪ Nicht jetzt – diese Saison schwach; beste Saison wird angezeigt */
+function seasonRatings(hd){
+  const sS=SEASON, sT=TOD, out={};
+  for(const [s] of SEASONS){ let best=0;
+    for(const [t] of TIMES){ SEASON=s; TOD=t; const r=rating(hd); if(r>best) best=r; }
+    out[s]=best; }
+  SEASON=sS; TOD=sT; return out;
+}
+function seasonName(k){ return (SEASONS.find(x=>x[0]===k)||["","?"])[1]; }
+function _computePriority(hd){
+  const R=seasonRatings(hd);
+  const keys=SEASONS.map(x=>x[0]);
+  const peak=Math.max(0,...keys.map(k=>R[k]));
+  if(peak<=0) return null; // nirgends etwas wert -> keine Empfehlung
+  const thr=peak*0.7;
+  const windows=keys.filter(k=>R[k]>=thr && R[k]>0);
+  const best=keys.reduce((a,k)=>R[k]>R[a]?k:a, keys[0]);
+  const now=nowState().season;
+  const iNow=SEASON_ORDER.indexOf(now);
+  const dist=k=>((SEASON_ORDER.indexOf(k)-iNow+4)%4);
+  const nowGood=windows.includes(now);
+  const nearest=windows.slice().sort((a,b)=>dist(a)-dist(b))[0];
+  const nearestDist=dist(nearest);
+  let level,label;
+  if(windows.length>=3){ level="green"; label="Jederzeit"; }
+  else if(nowGood && windows.length===1){ level="red"; label="Jetzt jagen"; }
+  else if(nowGood){ level="yellow"; label="Jetzt · begrenzt"; }
+  else if(nearestDist===1){ level="yellow"; label="Bald: "+seasonName(nearest); }
+  else { level="white"; label="Beste Saison: "+seasonName(best); }
+  return {level,label,best,windows,R};
+}
+function seasonPriority(hd){
+  if(!hd || !hd.id) return hd?_computePriority(hd):null;
+  const k=hd.id+"|"+nowState().season+"|"+(SCORE_FOR||"")+"|"+(LURE_ON?1:0);
+  let v=_prioCache[k];
+  if(v===undefined){ v=_computePriority(hd); _prioCache[k]=v; }
+  return v;
+}
+const PRIO_WEIGHT={red:3,yellow:2,green:1,white:0};
+function prioWeight(hd){ const p=seasonPriority(hd); return p?PRIO_WEIGHT[p.level]:-1; }
+const PRIO_ICON={red:"🔴",yellow:"🟡",green:"🟢",white:"⚪"};
+function priorityBadge(hd){
+  const p=seasonPriority(hd); if(!p) return "";
+  const tip=SEASONS.map(([k,lab])=>lab.replace(/^\S+\s/,"")+": "+Math.round(p.R[k])).join(" · ");
+  return `<span class="pribadge ${p.level}" title="Empfehlung — beste Saison: ${esc(seasonName(p.best))}&#10;Bewertung je Saison → ${esc(tip)}">${PRIO_ICON[p.level]} ${esc(p.label)}</span>`;
+}
+
 let ED=null; // Editor-Status: null=zu, sonst {id, draft}
 let SEARCH="";  // Pokémon-Suche (filtert Horden)
 let LSEARCH=""; // Orts-/Region-Suche
 let MFILTER=""; // Methoden-Filter: ""=alle | horde5 | horde3 | angeln | single
+let SORT="rating"; // Sortierung der Horden: "rating" | "prio" (Empfehlung nach Saison-Ampel)
+function setSort(v){ SORT=v; renderHordeList(); }
 function hordeLocKey(hd){return norm(hd.loc||"")+"|"+norm(hd.region||"");}
 function setLocSearch(v){LSEARCH=v;HORDE_LIMIT=40;renderHordeList();}
 function setMethodFilter(v){MFILTER=(MFILTER===v?"":v);render();}
@@ -1823,6 +1886,9 @@ function searchBarHTML(){
     <span style="align-self:center;font-size:12px;color:var(--muted);margin-right:2px">Methode:</span>
     <div class="season methchip ${MFILTER===''?'active':''}" onclick="setMethodFilter('')">Alle</div>
     ${METHODS.map(([k,l])=>`<div class="season methchip ${MFILTER===k?'active':''}" onclick="setMethodFilter('${k}')">${l}</div>`).join("")}
+    <span style="align-self:center;font-size:12px;color:var(--muted);margin:0 2px 0 10px">Sortierung:</span>
+    <div class="season methchip ${SORT==='rating'?'active':''}" onclick="setSort('rating')" title="Nach Gesamt-Bewertung (Enc/h × Ø-Wert)">🏆 Bewertung</div>
+    <div class="season methchip ${SORT==='prio'?'active':''}" onclick="setSort('prio')" title="Nach Saison-Empfehlung: 🔴 jetzt jagen zuerst">🎯 Empfehlung</div>
   </div>`;
 }
 function setHordeSearch(v){SEARCH=v;HORDE_LIMIT=40;renderHordeList();}
@@ -1870,7 +1936,9 @@ function renderHordeList(){
   const box=document.getElementById("hordeList"); if(!box) return;
   const q=norm(SEARCH), lq=norm(LSEARCH), filtering=!!(q||lq||MFILTER);
   computeHordeRanks();
-  const sorted=[...HORDES].sort((a,b)=>rating(b)-rating(a));
+  const sorted=[...HORDES].sort((a,b)=> SORT==="prio"
+    ? (prioWeight(b)-prioWeight(a) || rating(b)-rating(a))
+    : rating(b)-rating(a));
   const matches = filtering ? sorted.filter(hd=>hordeMatchesFilter(hd,q,lq)) : sorted;
   let limit = Math.min(HORDE_LIMIT, matches.length);
   if(ADMIN && ED && ED.id){ const ei=matches.findIndex(hd=>hd.id===ED.id); if(ei>=limit) limit=ei+1; } // Editor immer zeigen
@@ -1997,7 +2065,7 @@ function renderHordeCard(hd,edit){
       combo=`<span class="bestcombo" title="Beste Bewertung dieser Horde">✨ Beste Kombi: ${sl} · ${tlab}</span>`; } }
   let h=`<div class="hcard ranked${isBest?' best':''}" data-spec="${esc(hordeSpec(hd))}" data-loc="${esc(hordeLocKey(hd))}" data-method="${methodOf(hd)}" style="${habStyle(hd)}">
     ${rankBadgeHTML(hd)}
-    <h3>📍 <span class="hlink" onclick="filterLoc('${jsAttr(stripParen(hd.loc))}')" title="Nur diesen Ort zeigen">${esc(trLoc(hd.loc)||"—")}</span> ${hd.region?`<span class="ktag">${esc(trRegion(hd.region))}</span>`:""} ${methodBadge(hd)} ${habBadge(hd)} ${levelBadge(hd)} ${dangerBadge(hd)} ${combo}
+    <h3>📍 <span class="hlink" onclick="filterLoc('${jsAttr(stripParen(hd.loc))}')" title="Nur diesen Ort zeigen">${esc(trLoc(hd.loc)||"—")}</span> ${hd.region?`<span class="ktag">${esc(trRegion(hd.region))}</span>`:""} ${methodBadge(hd)} ${habBadge(hd)} ${levelBadge(hd)} ${dangerBadge(hd)} ${priorityBadge(hd)} ${combo}
       ${edit?`<span class="hactions">
         ${habSelect(hd.id,hd.hab)}
         <button class="btn" style="padding:4px 9px;font-size:12px" onclick="duplicateHorde('${hd.id}')" title="Kachel für weitere Ebene duplizieren">⧉ Splitten</button>
