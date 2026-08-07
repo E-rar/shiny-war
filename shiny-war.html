@@ -185,6 +185,23 @@
   .pribadge.yellow{background:rgba(255,207,92,.16);border-color:#e0a93f;color:#e0a93f}
   .pribadge.green{background:rgba(63,185,80,.14);border-color:var(--good);color:var(--good)}
   .pribadge.white{background:var(--panel);border-color:var(--border);color:var(--muted)}
+  .bbtip{position:fixed;z-index:9999;max-width:280px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:9px 11px;box-shadow:0 10px 28px rgba(0,0,0,.5);font-size:12px;color:var(--text);pointer-events:none;opacity:0;transition:opacity .12s ease;line-height:1.4}
+  .bbtip-h{display:flex;align-items:center;gap:6px;font-weight:700;margin-bottom:5px}
+  .bbtip-dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex:0 0 auto}
+  .bbtip-dot.red{background:var(--bad)}.bbtip-dot.yellow{background:#e0a93f}.bbtip-dot.green{background:var(--good)}.bbtip-dot.white{background:var(--muted)}
+  .bbtip-sub{color:var(--muted);font-size:11.5px;margin-bottom:6px}
+  .bbtip-seasons{display:flex;flex-direction:column;gap:4px}
+  .bbtip-srow{display:flex;align-items:center;gap:7px}
+  .bbtip-srow.best .bbtip-slab,.bbtip-srow.best .bbtip-sval{font-weight:700;color:var(--text)}
+  .bbtip-sdot{width:8px;height:8px;border-radius:2px;flex:0 0 auto}
+  .bbtip-slab{flex:0 0 96px;white-space:nowrap}
+  .bbtip-slab em{color:var(--accent2);font-style:normal;font-size:10.5px;margin-left:3px}
+  .bbtip-bar{flex:1;height:6px;background:var(--panel2);border-radius:4px;overflow:hidden}
+  .bbtip-bar i{display:block;height:100%;border-radius:4px}
+  .bbtip-sval{flex:0 0 auto;font-variant-numeric:tabular-nums;color:var(--muted);min-width:28px;text-align:right}
+  .bbtip-drow{margin:2px 0}.bbtip-drow+.bbtip-drow{border-top:1px solid var(--border);padding-top:4px}
+  .bbtip-lv{color:var(--muted);font-size:10.5px}
+  .bbtip-h.danger{color:var(--bad)}
   .hcard h3{margin:0 0 2px;font-size:15px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .hcard .loc-note{color:var(--muted);font-size:12.5px;margin:0 0 10px}
   .hactions{margin-left:auto;display:flex;gap:6px}
@@ -1664,13 +1681,18 @@ function hordeDangers(hd){
   }
   return out;
 }
+function dangerTipHTML(d){
+  const rows=d.map(x=>`<div class="bbtip-drow"><b>${esc(x.name)}</b>: `
+    +x.moves.map(mv=>DANGER_ICON[mv.cat]+" "+esc(mv.m)+(mv.lvl?` <span class="bbtip-lv">Lv ${mv.lvl}</span>`:"")).join(", ")
+    +`</div>`).join("");
+  return `<div class="bbtip-h danger">⚠ Riskante Attacken</div><div class="bbtip-seasons">${rows}</div>`;
+}
 function dangerBadge(hd){
   const d=hordeDangers(hd); if(!d.length) return "";
   const cats=new Set(); d.forEach(x=>x.moves.forEach(mv=>cats.add(mv.cat)));
   const ic=cats.has("ko")?"💥":(cats.has("flee")?"🌀":"🩸");
   const label=cats.has("ko")?"Selbst-K.O.":(cats.has("flee")?"Flucht":"Rückstoß");
-  const tip="⚠ Riskante Attacken – "+d.map(x=>x.name+": "+x.moves.map(mv=>DANGER_ICON[mv.cat]+" "+mv.m+(mv.lvl?(" (Lv "+mv.lvl+")"):"")).join(", ")).join(" · ");
-  return `<span class="badge dangerbadge" title="${esc(tip)}">${ic} ${label}</span>`;
+  return `<span class="badge dangerbadge" data-tip="${esc(dangerTipHTML(d))}">${ic} ${label}</span>`;
 }
 /* String sicher in ein onclick='...(\'X\')' einbetten (Apostrophe/Backslash/Quotes). */
 function jsAttr(s){return String(s==null?"":s).replace(/\\/g,"\\\\").replace(/'/g,"\\'").replace(/"/g,"&quot;");}
@@ -1843,11 +1865,44 @@ function seasonPriority(hd){
 const PRIO_WEIGHT={red:3,yellow:2,green:1,white:0};
 function prioWeight(hd){ const p=seasonPriority(hd); return p?PRIO_WEIGHT[p.level]:-1; }
 const PRIO_ICON={red:"🔴",yellow:"🟡",green:"🟢",white:"⚪"};
+function priorityTipHTML(p){
+  const now=nowState().season;
+  const peak=Math.max(1,...SEASONS.map(([k])=>p.R[k]));
+  const rows=SEASONS.map(([k,lab])=>{
+    const col=SEASON_COL[k]||"#888", val=Math.round(p.R[k]);
+    const w=p.R[k]>0?Math.max(4,Math.round(p.R[k]/peak*100)):0;
+    return `<div class="bbtip-srow${k===p.best?' best':''}">`
+      +`<span class="bbtip-sdot" style="background:${col}"></span>`
+      +`<span class="bbtip-slab">${esc(lab.replace(/^\S+\s/,""))}${k===now?' <em>· jetzt</em>':''}</span>`
+      +`<span class="bbtip-bar"><i style="width:${w}%;background:${col}"></i></span>`
+      +`<span class="bbtip-sval">${val}</span></div>`;
+  }).join("");
+  return `<div class="bbtip-h"><span class="bbtip-dot ${p.level}"></span>Empfehlung · ${PRIO_ICON[p.level]} ${esc(p.label)}</div>`
+    +`<div class="bbtip-sub">Beste Saison: <b>${esc(seasonName(p.best))}</b> · Bewertung je Saison:</div>`
+    +`<div class="bbtip-seasons">${rows}</div>`;
+}
 function priorityBadge(hd){
   const p=seasonPriority(hd); if(!p) return "";
-  const tip=SEASONS.map(([k,lab])=>lab.replace(/^\S+\s/,"")+": "+Math.round(p.R[k])).join(" · ");
-  return `<span class="pribadge ${p.level}" title="Empfehlung — beste Saison: ${esc(seasonName(p.best))}&#10;Bewertung je Saison → ${esc(tip)}">${PRIO_ICON[p.level]} ${esc(p.label)}</span>`;
+  return `<span class="pribadge ${p.level}" data-tip="${esc(priorityTipHTML(p))}">${PRIO_ICON[p.level]} ${esc(p.label)}</span>`;
 }
+/* ===== Gestylte Tooltips (Bober-Board-Look) via [data-tip] ================
+   Ein schwebendes Panel, per Event-Delegation an alle Elemente mit data-tip.
+   Der HTML-Inhalt steht escaped im Attribut; getAttribute liefert ihn wieder
+   dekodiert, sodass innerHTML ihn rendert. */
+let _bbtip=null;
+function bbtipEl(){ if(!_bbtip){ _bbtip=document.createElement("div"); _bbtip.className="bbtip"; document.body.appendChild(_bbtip); } return _bbtip; }
+function bbtipMove(el){ const t=bbtipEl(), r=el.getBoundingClientRect(), tw=t.offsetWidth, th=t.offsetHeight;
+  let left=r.left+r.width/2-tw/2, top=r.top-th-10;
+  left=Math.max(8,Math.min(left,innerWidth-tw-8));
+  if(top<8) top=r.bottom+10;
+  t.style.left=left+"px"; t.style.top=top+"px"; }
+function bbtipShow(el){ const html=el.getAttribute("data-tip"); if(!html) return; const t=bbtipEl();
+  t.innerHTML=html; t.style.display="block"; bbtipMove(el); requestAnimationFrame(()=>{ t.style.opacity="1"; }); }
+function bbtipHide(){ if(!_bbtip) return; _bbtip.style.opacity="0"; _bbtip.style.display="none"; }
+document.addEventListener("mouseover",e=>{ const el=e.target.closest&&e.target.closest("[data-tip]"); if(el) bbtipShow(el); });
+document.addEventListener("mouseout",e=>{ const el=e.target.closest&&e.target.closest("[data-tip]"); if(el){ const to=e.relatedTarget; if(!to||!el.contains(to)) bbtipHide(); } });
+document.addEventListener("scroll",bbtipHide,true);
+window.addEventListener("resize",bbtipHide);
 
 let ED=null; // Editor-Status: null=zu, sonst {id, draft}
 let SEARCH="";  // Pokémon-Suche (filtert Horden)
