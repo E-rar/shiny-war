@@ -1854,7 +1854,7 @@ let SEARCH="";  // Pokémon-Suche (filtert Horden)
 let LSEARCH=""; // Orts-/Region-Suche
 let MFILTER=""; // Methoden-Filter: ""=alle | horde5 | horde3 | angeln | single
 let SORT="rating"; // Sortierung der Horden: "rating" | "prio" (Empfehlung nach Saison-Ampel)
-function setSort(v){ SORT=v; renderHordeList(); }
+function setSort(v){ SORT=v; render(); } // render() zeichnet auch die Suchleiste neu -> aktiver Chip aktualisiert
 function hordeLocKey(hd){return norm(hd.loc||"")+"|"+norm(hd.region||"");}
 function setLocSearch(v){LSEARCH=v;HORDE_LIMIT=40;renderHordeList();}
 function setMethodFilter(v){MFILTER=(MFILTER===v?"":v);render();}
