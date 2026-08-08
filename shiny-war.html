@@ -974,9 +974,10 @@ function harvestLocIds(arr,lang){
   for(const m of arr){ for(const l of (m.locations||[])){ if(l.location_id!=null){ const nm=l.location_name_full||l.location_name; if(nm) map[l.location_id]=nm; } } }
   saveLS(lang==="en"?"sw_locid_en":"sw_locid_de",map);
 }
-/* DE->EN Ortskarte aus den beiden id-Karten neu bauen. */
+/* DE->EN Ortskarte aus den beiden id-Karten (er)neuern.
+   WICHTIG: bestehende Übersetzungen NICHT löschen (nur ergänzen/aktualisieren) — sonst
+   verliert ein reiner DE-Dump-Import alle Orts-Übersetzungen, wenn LOC_ID_EN gerade leer ist. */
 function rebuildLocEn(){
-  LOC_EN={};
   for(const id in LOC_ID_EN){ const de=LOC_ID_DE[id]; if(de && LOC_ID_EN[id]) LOC_EN[norm(de)]=LOC_ID_EN[id]; }
   saveLocEn();
   return Object.keys(LOC_EN).length;
@@ -2376,6 +2377,7 @@ function dumpMethod(loc){
   if(loc.is_horde_5x) return "horde5";
   if(loc.is_horde_3x) return "horde3";
   const t=String(loc.type||"").toLowerCase();
+  if(t.includes("lockduft")||t.includes("sweet scent")) return "horde5"; // Lockduft = Sweet Scent = Horde (Größe via Flag, sonst 5er)
   if(t.includes("angel")||t.includes("rod")||t.includes("fish")) return "angeln"; // Angel/Profiangel/Super Rod
   return "single"; // inkl. "Water" = Surfen (Single auf dem Wasser)
 }
@@ -2386,6 +2388,17 @@ function dumpTod(loc){ const m=dumpPctNum(loc.rarity_morning)>0,d=dumpPctNum(loc
   if(m&&d&&n) return "immer"; if(n&&!d&&!m) return "nacht"; if(m&&!d&&!n) return "morgen"; if(d&&!n) return "tag"; return "immer"; }
 function dumpCombineTod(a,b){ return (a==null||a===b)?b:"immer"; }
 function convertMonsterDump(arr){
+  // Vor-Pass: je Ort den Untergrund aus den Lauf-/Terrain-Einträgen (nicht-Lockduft) sammeln.
+  // Sweet-Scent-Horden stehen im neuen Dump als type "Lockduft" OHNE Untergrund -> von hier erben.
+  const terr=new Map();
+  for(const mon of arr){ for(const loc of (mon&&mon.locations||[])){
+    if(/lockduft|sweet scent/i.test(loc.type||"")) continue;
+    const h=dumpHab(loc.type); if(!h) continue;
+    const k=(loc.region_name||loc.region||"")+"|"+(loc.location_name_full||loc.location_name||loc.location||"");
+    const rec=terr.get(k)||{}; rec[h]=(rec[h]||0)+1; terr.set(k,rec);
+  }}
+  const inferHab=(region,place)=>{ const rec=terr.get(region+"|"+place); if(!rec) return "";
+    return Object.entries(rec).sort((a,b)=>b[1]-a[1])[0][0]; };
   const spots=new Map(); // key region|loc|method -> {loc,region,method,hab,members:Map, levels:Set}
   for(const mon of arr){
     const name=(mon&&mon.name||"").trim(); if(!name) continue;
@@ -2397,7 +2410,7 @@ function convertMonsterDump(arr){
       const surface=dumpSurface(loc); // Surfen ≠ Angeln, Gras ≠ Höhle … getrennt halten
       const key=region+"|"+place+"|"+method+"|"+surface;
       let spot=spots.get(key);
-      if(!spot){ spot={loc:place,region,method,hab:dumpHab(loc.type),typeNote:dumpTypeNote(loc.type),members:new Map(),levels:new Set()}; spots.set(key,spot); }
+      if(!spot){ spot={loc:place,region,method,hab:(dumpHab(loc.type)||(isHorde?inferHab(region,place):"")),typeNote:dumpTypeNote(loc.type),members:new Map(),levels:new Set()}; spots.set(key,spot); }
       let mem=spot.members.get(name);
       if(!mem){ mem={name,s:{},tod:null,lure:false,lvMin:0,lvMax:0}; spot.members.set(name,mem); }
       const pct=isHorde?dumpHordePct(loc):dumpSinglePct(loc);
