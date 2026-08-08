@@ -724,6 +724,11 @@
   },
   "caught": [
     {
+      "pokemon": "knacklion",
+      "user_id": 543524527078899742,
+      "date": "2026-08-08"
+    },
+    {
       "pokemon": "mantax",
       "user_id": 543524527078899742,
       "date": "2026-08-02"
