@@ -200,6 +200,7 @@
   .bbtip-bar i{display:block;height:100%;border-radius:4px}
   .bbtip-sval{flex:0 0 auto;font-variant-numeric:tabular-nums;color:var(--muted);min-width:28px;text-align:right}
   .bbtip-drow{margin:2px 0}.bbtip-drow+.bbtip-drow{border-top:1px solid var(--border);padding-top:4px}
+  .bbtip-drow.better b{color:var(--accent2)}
   .bbtip-lv{color:var(--muted);font-size:10.5px}
   .bbtip-h.danger{color:var(--bad)}
   .hcard h3{margin:0 0 2px;font-size:15px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -1818,47 +1819,56 @@ function effExpValue(hd){
 }
 
 /* ===== Season-Empfehlung + Prioritäts-Ampel =============================
-   Idee (Opportunitätskosten): die aktuelle Ingame-Saison nicht mit einem Target
-   "verbrennen", das man auch später noch gut bekommt. Für jede Horde die Bewertung
-   je Saison (Bestwert über alle Tageszeiten) ermitteln, daraus die "guten Fenster"
-   (>= 70% des Saison-Peaks) und relativ zur AKTUELLEN Saison einordnen:
+   Idee (Opportunitätskosten): die betrachtete Saison nicht mit einer Spezies
+   "verbrennen", die man auch später besser bekommt. Bewertet wird IMMER bei der
+   aktuellen Tageszeit (TOD) — es zählen also nur die Mons, die gerade in der Karte
+   stehen (Tag/Nacht werden NICHT mehr vermischt). Die Horde wird je Saison (bei dieser
+   Tageszeit) bewertet, daraus die "guten Fenster" (>= 70% des Peaks) und relativ zur
+   AKTUELL angezeigten Saison eingeordnet:
      🔴 Jetzt  – jetzt gut & danach lange kein gutes Fenster (nur 1 Saison)
-     🟡 Bald   – jetzt/nächste Saison gut, aber auf ~2 Seasons begrenzt
+     🟡 Bald/begrenzt – jetzt/nächste Saison gut, aber auf ~2 Seasons begrenzt
      🟢 Jederzeit – in ≥3 Seasons stark, kein Zeitdruck
      ⚪ Nicht jetzt – diese Saison schwach; beste Saison wird angezeigt */
 function seasonRatings(hd){
-  const sS=SEASON, sT=TOD, out={};
-  for(const [s] of SEASONS){ let best=0;
-    for(const [t] of TIMES){ SEASON=s; TOD=t; const r=rating(hd); if(r>best) best=r; }
-    out[s]=best; }
-  SEASON=sS; TOD=sT; return out;
+  // Bei der AKTUELLEN Tageszeit (TOD unverändert) je Saison bewerten -> nur die
+  // gerade sichtbaren Mons zählen; kein Vermischen von Tag/Nacht mehr.
+  const sS=SEASON, out={};
+  for(const [s] of SEASONS){ SEASON=s; out[s]=rating(hd); }
+  SEASON=sS; return out;
 }
 function seasonName(k){ return (SEASONS.find(x=>x[0]===k)||["","?"])[1]; }
 function _computePriority(hd){
   const R=seasonRatings(hd);
   const keys=SEASONS.map(x=>x[0]);
   const peak=Math.max(0,...keys.map(k=>R[k]));
-  if(peak<=0) return null; // nirgends etwas wert -> keine Empfehlung
+  if(peak<=0) return null; // bei dieser Tageszeit nirgends etwas wert -> keine Empfehlung
   const thr=peak*0.7;
   const windows=keys.filter(k=>R[k]>=thr && R[k]>0);
   const best=keys.reduce((a,k)=>R[k]>R[a]?k:a, keys[0]);
-  const now=nowState().season;
-  const iNow=SEASON_ORDER.indexOf(now);
-  const dist=k=>((SEASON_ORDER.indexOf(k)-iNow+4)%4);
-  const nowGood=windows.includes(now);
+  // Bezug ist die AKTUELL angezeigte Saison (nicht zwingend die Ingame-Saison);
+  // bei "Alle Saisons" fällt es auf die echte Ingame-Saison zurück.
+  const ref=(SEASON!=="all" && keys.includes(SEASON)) ? SEASON : nowState().season;
+  const iRef=SEASON_ORDER.indexOf(ref);
+  const dist=k=>((SEASON_ORDER.indexOf(k)-iRef+4)%4);
+  const refGood=windows.includes(ref);
   const nearest=windows.slice().sort((a,b)=>dist(a)-dist(b))[0];
   const nearestDist=dist(nearest);
+  // Pro AKTUELL sichtbarem Mon: beste Saison der SELBEN Spezies (fürs "aufheben?"-Argument)
+  const memberBest=activeMembers(hd).map(m=>{
+    const bs=keys.reduce((a,k)=>((Number(m.s&&m.s[k])||0)>(Number(m.s&&m.s[a])||0)?k:a), keys[0]);
+    return {name:m.name, cur:Number(m.s&&m.s[ref])||0, best:bs, bestPct:Number(m.s&&m.s[bs])||0};
+  });
   let level,label;
   if(windows.length>=3){ level="green"; label="Jederzeit"; }
-  else if(nowGood && windows.length===1){ level="red"; label="Jetzt jagen"; }
-  else if(nowGood){ level="yellow"; label="Jetzt · begrenzt"; }
+  else if(refGood && windows.length===1){ level="red"; label="Jetzt jagen"; }
+  else if(refGood){ level="yellow"; label="Jetzt · begrenzt"; }
   else if(nearestDist===1){ level="yellow"; label="Bald: "+seasonName(nearest); }
   else { level="white"; label="Beste Saison: "+seasonName(best); }
-  return {level,label,best,windows,R};
+  return {level,label,best,windows,R,ref,memberBest};
 }
 function seasonPriority(hd){
   if(!hd || !hd.id) return hd?_computePriority(hd):null;
-  const k=hd.id+"|"+nowState().season+"|"+(SCORE_FOR||"")+"|"+(LURE_ON?1:0);
+  const k=hd.id+"|"+SEASON+"|"+TOD+"|"+(SCORE_FOR||"")+"|"+(LURE_ON?1:0);
   let v=_prioCache[k];
   if(v===undefined){ v=_computePriority(hd); _prioCache[k]=v; }
   return v;
@@ -1867,20 +1877,26 @@ const PRIO_WEIGHT={red:3,yellow:2,green:1,white:0};
 function prioWeight(hd){ const p=seasonPriority(hd); return p?PRIO_WEIGHT[p.level]:-1; }
 const PRIO_ICON={red:"🔴",yellow:"🟡",green:"🟢",white:"⚪"};
 function priorityTipHTML(p){
-  const now=nowState().season;
+  const ref=p.ref, todLab=(TIMES.find(x=>x[0]===TOD)||["",""])[1];
   const peak=Math.max(1,...SEASONS.map(([k])=>p.R[k]));
   const rows=SEASONS.map(([k,lab])=>{
     const col=SEASON_COL[k]||"#888", val=Math.round(p.R[k]);
     const w=p.R[k]>0?Math.max(4,Math.round(p.R[k]/peak*100)):0;
     return `<div class="bbtip-srow${k===p.best?' best':''}">`
       +`<span class="bbtip-sdot" style="background:${col}"></span>`
-      +`<span class="bbtip-slab">${esc(lab.replace(/^\S+\s/,""))}${k===now?' <em>· jetzt</em>':''}</span>`
+      +`<span class="bbtip-slab">${esc(lab.replace(/^\S+\s/,""))}${k===ref?' <em>· jetzt</em>':''}</span>`
       +`<span class="bbtip-bar"><i style="width:${w}%;background:${col}"></i></span>`
       +`<span class="bbtip-sval">${val}</span></div>`;
   }).join("");
+  const memRows=(p.memberBest||[]).map(m=>{
+    const better=m.best!==ref && m.bestPct>m.cur;
+    const note=better?`→ besser in <b>${esc(seasonName(m.best))}</b> (${m.bestPct}%)`:`✓ jetzt top`;
+    return `<div class="bbtip-drow${better?' better':''}">${esc(memName(m.name))} <span class="bbtip-lv">${m.cur}%</span> ${note}</div>`;
+  }).join("");
   return `<div class="bbtip-h"><span class="bbtip-dot ${p.level}"></span>Empfehlung · ${PRIO_ICON[p.level]} ${esc(p.label)}</div>`
-    +`<div class="bbtip-sub">Beste Saison: <b>${esc(seasonName(p.best))}</b> · Bewertung je Saison:</div>`
-    +`<div class="bbtip-seasons">${rows}</div>`;
+    +`<div class="bbtip-sub">Beste Saison: <b>${esc(seasonName(p.best))}</b> · Bewertung je Saison (${esc(todLab)}):</div>`
+    +`<div class="bbtip-seasons">${rows}</div>`
+    +(memRows?`<div class="bbtip-sub" style="margin-top:7px">Diese Spezies – beste Saison:</div><div class="bbtip-seasons">${memRows}</div>`:"");
 }
 function priorityBadge(hd){
   const p=seasonPriority(hd); if(!p) return "";
