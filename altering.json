@@ -1,0 +1,48 @@
+{
+  "updated": "2026-08-10T20:05+00:00",
+  "active_type": "Steel",
+  "singles": [
+    {
+      "name": "Clefairy",
+      "tier": "2"
+    },
+    {
+      "name": "Probopass",
+      "tier": "3"
+    },
+    {
+      "name": "Meowth",
+      "tier": "4"
+    },
+    {
+      "name": "Ferrothorn",
+      "tier": "5"
+    },
+    {
+      "name": "Electrike",
+      "tier": "6"
+    }
+  ],
+  "rare_singles": [
+    {
+      "name": "Empoleon",
+      "tier": "0"
+    },
+    {
+      "name": "Metang",
+      "tier": "0"
+    }
+  ],
+  "hordes": [
+    {
+      "name": "Forretress",
+      "tier": "2"
+    },
+    {
+      "name": "Minccino",
+      "tier": "6"
+    }
+  ],
+  "source": "PokeMMO Altering Cave Rotation Sheet (Team Méw)",
+  "source_url": "https://docs.google.com/spreadsheets/d/12lZupylxLAKUVQQJZIC8GJmvQiUwpbAAQ3BduAu_rig/edit#gid=1031347870"
+}
