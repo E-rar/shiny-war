@@ -14,9 +14,13 @@ Setup:
 
 import asyncio
 import base64
+import csv
+import io
 import json
 import os
+import re
 import subprocess
+import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -50,6 +54,17 @@ GUILD_ID = int(os.getenv("GUILD_ID", "0"))
 REPO_DIR = Path(__file__).parent
 GIT_AUTO_PUSH = os.getenv("GIT_AUTO_PUSH", "1") != "0"
 GIT_PUSH_DELAY = int(os.getenv("GIT_PUSH_DELAY", "300"))  # Standard: 5 Minuten
+
+# --- Wandelhöhle / Altering Cave -------------------------------------------
+# Öffentliches Community-Sheet mit der aktuellen Rotation (Spalte A = "ACTIVE Current").
+# Als CSV abrufbar (gviz). Höhle rotiert 02/08/14/20 Uhr; wir prüfen stündlich.
+ALTERING_FILE = Path(__file__).parent / "altering.json"
+ALTERING_CSV_URL = ("https://docs.google.com/spreadsheets/d/"
+                    "12lZupylxLAKUVQQJZIC8GJmvQiUwpbAAQ3BduAu_rig/gviz/tq?tqx=out:csv&gid=1031347870")
+ALTERING_SOURCE_URL = ("https://docs.google.com/spreadsheets/d/"
+                       "12lZupylxLAKUVQQJZIC8GJmvQiUwpbAAQ3BduAu_rig/edit#gid=1031347870")
+ALTERING_INTERVAL = int(os.getenv("ALTERING_INTERVAL", "3600"))  # Standard: stündlich prüfen
+_altering_started = False
 
 
 class RestrictedTree(app_commands.CommandTree):
@@ -166,6 +181,106 @@ def schedule_git_push() -> None:
     if _push_task and not _push_task.done():
         _push_task.cancel()
     _push_task = asyncio.create_task(_push_after_delay())
+
+
+# ---------------------------------------------------------------------------
+# Wandelhöhle / Altering Cave: aktuelle Rotation aus dem Community-Sheet ziehen.
+# Spalte A ist mit "ACTIVE Current" gepflegt: Kopf = aktiver Typ, danach die
+# Listen Singles / Rare Singles / Hordes. Beide Höhlen (Kanto+Hoenn) sind
+# identisch, es reicht also EIN Datensatz. Ergebnis -> altering.json (ins Repo).
+# ---------------------------------------------------------------------------
+
+def _git_push_paths(paths, msg: str) -> None:
+    """Fügt Dateien hinzu, committet (nur bei Änderung) und pusht robust (pull --rebase davor)."""
+    if not GIT_AUTO_PUSH:
+        return
+    try:
+        subprocess.run(["git", "add", *paths], cwd=REPO_DIR, check=True)
+        if subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=REPO_DIR).returncode == 0:
+            has_local = False
+        else:
+            subprocess.run(["git", "commit", "-m", msg], cwd=REPO_DIR, check=True)
+            has_local = True
+        subprocess.run(["git", "pull", "--rebase", "--autostash"], cwd=REPO_DIR)
+        ahead = subprocess.run(["git", "rev-list", "--count", "@{u}..HEAD"], cwd=REPO_DIR,
+                               capture_output=True, text=True).stdout.strip()
+        if has_local or (ahead and ahead != "0"):
+            subprocess.run(["git", "push"], cwd=REPO_DIR, check=True)
+    except Exception as e:
+        print(f"⚠️  Git-Push ({paths}) fehlgeschlagen: {e}")
+
+
+def fetch_altering():
+    """Holt die CSV und liest Spalte A (aktiver Typ + Singles/Rare/Hordes). Gibt dict oder None."""
+    req = urllib.request.Request(ALTERING_CSV_URL, headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        raw = r.read().decode("utf-8", "replace")
+    rows = list(csv.reader(io.StringIO(raw)))
+    if not rows:
+        return None
+    header = rows[0][0] if rows[0] else ""
+    m = re.search(r"([A-Za-z]+)\s+ACTIVE", header)
+    active_type = m.group(1) if m else (header.split()[0] if header.split() else "?")
+    out = {"singles": [], "rare_singles": [], "hordes": []}
+    section = "singles"  # Spalte-A-Kopf ist bereits die Singles-Überschrift
+    for row in rows[1:]:
+        name = row[0].strip() if len(row) > 0 else ""
+        tier = row[1].strip() if len(row) > 1 else ""
+        if name == "":
+            break  # Spalte A ist nur oben gefüllt -> Ende des aktiven Blocks
+        low = name.lower()
+        if low.startswith("rare single"):
+            section = "rare_singles"; continue
+        if low.startswith("horde"):
+            section = "hordes"; continue
+        if low.startswith("single"):
+            section = "singles"; continue
+        if low.startswith("rotation") or low.startswith("tier"):
+            continue
+        out[section].append({"name": name, "tier": tier})
+    return {
+        "updated": datetime.now(timezone.utc).isoformat(timespec="minutes"),
+        "active_type": active_type,
+        "singles": out["singles"],
+        "rare_singles": out["rare_singles"],
+        "hordes": out["hordes"],
+        "source": "PokeMMO Altering Cave Rotation Sheet (Team Méw)",
+        "source_url": ALTERING_SOURCE_URL,
+    }
+
+
+def _content_key(s: str) -> str:
+    """Vergleichs-Schlüssel ohne den 'updated'-Zeitstempel."""
+    try:
+        d = json.loads(s); d.pop("updated", None)
+        return json.dumps(d, ensure_ascii=False, sort_keys=True)
+    except Exception:
+        return s
+
+
+def _run_altering_update() -> None:
+    try:
+        data = fetch_altering()
+        if not data or not (data["singles"] or data["hordes"] or data["rare_singles"]):
+            print("⚠ Altering: leeres/ungültiges Ergebnis – übersprungen.")
+            return
+        new = json.dumps(data, ensure_ascii=False, indent=2)
+        old = ALTERING_FILE.read_text(encoding="utf-8") if ALTERING_FILE.exists() else ""
+        if _content_key(new) == _content_key(old):
+            return  # inhaltlich unverändert -> nichts tun
+        ALTERING_FILE.write_text(new, encoding="utf-8")
+        _git_push_paths(["altering.json"], f"Update altering.json ({data['active_type']})")
+        print(f"✅ Altering aktualisiert: {data['active_type']} "
+              f"({len(data['singles'])} Singles · {len(data['hordes'])} Hordes)")
+    except Exception as e:
+        print(f"⚠ Altering-Update fehlgeschlagen: {e}")
+
+
+async def _altering_loop() -> None:
+    await bot.wait_until_ready()
+    while not bot.is_closed():
+        await asyncio.to_thread(_run_altering_update)
+        await asyncio.sleep(ALTERING_INTERVAL)
 
 
 def record_user(data: dict, interaction: discord.Interaction) -> None:
@@ -298,6 +413,12 @@ async def on_ready():
         print(f"Namens-Backfill: {resolved}/{missing} fehlende Namen ergänzt.")
     except Exception as e:
         print(f"Fehler beim Namens-Backfill: {e}")
+    # Wandelhöhle-Rotation stündlich aktualisieren (nur einmal starten, auch bei Reconnects)
+    global _altering_started
+    if not _altering_started:
+        _altering_started = True
+        bot.loop.create_task(_altering_loop())
+        print("🌀 Altering-Cave-Updater gestartet (stündlich).")
 
 
 # ---------------------------------------------------------------------------

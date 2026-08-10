@@ -2058,9 +2058,33 @@ const ALTERING = {
   ]
 };
 let ALT_IDX={}; // regionIndex -> aktueller Phasen-Index
+let ALTERING_LIVE=null; // aktuelle Rotation aus altering.json (Bot-Scrape); wenn gesetzt -> Live-Karte statt Karussell
 function alteringCurrentPhase(r){ return null; /* TODO: sobald das Schema bekannt ist, aktiven Phasen-Index (je Region r) zurückgeben */ }
 function altMon(name){ const l=resolve(name); return `<span class="altmon" title="${esc(labelText(name))}">${icon(name,l,'sm')} <span>${esc(memName(name))}</span>${l?" "+tierBadge(l.t):""}</span>`; }
 function altSpecTokens(){ const set=new Set(); ALTERING.phases.forEach(ph=>[...ph.hordes,...ph.solo].forEach(n=>specTokens(n).forEach(t=>set.add(t)))); return "|"+[...set].join("|")+"|"; }
+/* Live-Karte: aktuelle Wandelhöhlen-Rotation (beide Höhlen identisch) aus altering.json */
+function altLiveMons(arr){ return (arr&&arr.length)?arr.map(m=>altMon(m.name)).join(""):'<span class="loc-note">—</span>'; }
+function altLiveSpecTokens(){ if(!ALTERING_LIVE) return ""; const set=new Set();
+  [...(ALTERING_LIVE.singles||[]),...(ALTERING_LIVE.rare_singles||[]),...(ALTERING_LIVE.hordes||[])]
+    .forEach(m=>specTokens(m.name).forEach(t=>set.add(t)));
+  return "|"+[...set].join("|")+"|"; }
+function alteringLiveCardHTML(){
+  const A=ALTERING_LIVE; if(!A) return "";
+  const dataLoc="|"+norm(ALTERING.loc)+"|"+norm(ALTERING.locEn)+"|"+norm("Kanto")+"|"+norm("Hoenn")+"|";
+  let upd=""; try{ if(A.updated) upd=new Date(A.updated).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}); }catch(e){}
+  const locName=esc(LANG==='en'?ALTERING.locEn:ALTERING.loc);
+  return `<div class="altcard" data-loc="${esc(dataLoc)}" data-spec="${esc(altLiveSpecTokens())}" data-method="horde3 single">
+    <h3>🌀 <b><span class="hlink" onclick="filterLoc('${jsAttr(ALTERING.loc)}')" title="Nur die Wandelhöhle(n) zeigen">${locName}</span></b>
+      <span class="ktag">${esc(trRegion("Kanto"))} &amp; ${esc(trRegion("Hoenn"))} · identisch</span>
+      <span class="badge" style="background:var(--accent2);color:#10141c">Aktiver Typ: ${esc(A.active_type||"?")}</span>
+      ${upd?`<span class="ktag">🕒 Stand ${esc(upd)}</span>`:""}</h3>
+    <p class="loc-note">Aktuelle Rotation — die Höhle wechselt um 02/08/14/20 Uhr.</p>
+    <div class="altsec"><span class="altseclbl">👤 Singles</span><div class="altmons">${altLiveMons(A.singles)}</div></div>
+    <div class="altsec"><span class="altseclbl">💎 Rare Singles</span><div class="altmons">${altLiveMons(A.rare_singles)}</div></div>
+    <div class="altsec"><span class="altseclbl">🐾 Hordes <span class="ktag">(Lockduft)</span></span><div class="altmons">${altLiveMons(A.hordes)}</div></div>
+    <p class="loc-note" style="margin-top:8px">Daten: <a href="${esc(A.source_url||"")}" target="_blank" rel="noopener" style="color:var(--accent2)">${esc(A.source||"Altering Cave Rotation Sheet")}</a> — bitte diese Quelle nennen, wenn du die Daten weiterverwendest.</p>
+  </div>`;
+}
 function alteringCardHTML(r){
   const region=ALTERING.regions[r], P=ALTERING.phases, cur=alteringCurrentPhase(r), cid="altc"+r;
   let idx=(cur!=null?cur:(ALT_IDX[r]||0)); idx=Math.max(0,Math.min(idx,P.length-1)); ALT_IDX[r]=idx;
@@ -2118,7 +2142,9 @@ function renderLoc(){
   if(ADMIN && ED && !ED.id) h+=hordeEditorHTML(); // neue Horde: Editor oben
   if(HORDES.length) h+=searchBarHTML();
   if(!HORDES.length && !(ADMIN&&ED)) h+=`<div class="empty">Noch keine Horden vorhanden.${ADMIN?'<br>Klick „+ Neue Horde" — oder „Beispiel einfügen", um das Format zu sehen.':' Ein Admin muss sie anlegen bzw. importieren.'}</div>`;
-  ALTERING.regions.forEach((_,r)=>{ h+=alteringCardHTML(r); }); // Spezial: Wandelhöhle je Region
+  // Wandelhöhle: Live-Rotation (aus altering.json) bevorzugen, sonst das manuelle Phasen-Karussell
+  if(ALTERING_LIVE) h+=alteringLiveCardHTML();
+  else ALTERING.regions.forEach((_,r)=>{ h+=alteringCardHTML(r); }); // Spezial: Wandelhöhle je Region
   h+=`<div id="hordeList"></div>`;
   h+=`</div>`;
   view.innerHTML=h;
@@ -2571,6 +2597,7 @@ const REPO_HUNTS_ENC="hunts.json.enc";   // verschlüsselt (vom Bot gepusht)
 const REPO_POKEDB_URL="pokemon_data.json"; // DE+EN+ID+Sprite -> korrekte Bilder & Sprachumschalter
 const REPO_LOCEN_URL="loc_en.json";        // DE->EN Ortsnamen (vom Admin veröffentlicht)
 const REPO_DANGER_URL="danger_moves.json"; // gefährliche Level-Attacken je Art (vom Admin veröffentlicht)
+const REPO_ALTERING_URL="altering.json";   // aktuelle Wandelhöhlen-Rotation (vom Bot aus dem Sheet gescraped)
 async function loadRepoData(){
   if(!location.protocol.startsWith("http")) return; // lokal per Datei geöffnet -> kein Auto-Load
   // Bilder-/Namens-DB (DE+EN) laden, falls im Repo -> korrekte Sprites & Sprachumschalter
@@ -2582,6 +2609,9 @@ async function loadRepoData(){
   // Gefahren-DB (riskante Level-Attacken) laden, falls im Repo veröffentlicht
   try{ const r=await fetch(REPO_DANGER_URL+"?t="+Date.now());
     if(r.ok){ const j=await r.json(); if(j&&typeof j==="object"&&!Array.isArray(j)){ DANGER_MOVES=j; saveDanger(); } } }catch(e){}
+  // Wandelhöhlen-Rotation (vom Bot aus dem Sheet) laden, falls vorhanden
+  try{ const r=await fetch(REPO_ALTERING_URL+"?t="+Date.now());
+    if(r.ok){ const j=await r.json(); if(j&&j.active_type){ ALTERING_LIVE=j; } } }catch(e){}
   // Horden (Klartext) laden, AUSSER es gibt ungespeicherte lokale Änderungen (dirty)
   if(!hordesDirty() && (!ADMIN || !HORDES.length)){
     try{ const r=await fetch(REPO_HORDES_URL+"?t="+Date.now());
