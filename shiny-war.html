@@ -64,7 +64,13 @@
   .warnrow td{background:rgba(227,179,65,.07)}
   .dup{color:var(--warn);font-weight:700}
   .name-input{background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;
-    padding:4px 8px;font-size:13px;width:150px}
+    padding:4px 8px;font-size:13px;width:150px;transition:border-color .15s,box-shadow .15s}
+  .name-input:focus{outline:none;border-color:var(--accent2);box-shadow:0 0 0 3px rgba(90,200,250,.18)}
+  .search-input{background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:20px;
+    padding:8px 14px;font-size:13.5px;width:210px;transition:border-color .15s,box-shadow .15s,background .15s}
+  .search-input::placeholder{color:var(--muted)}
+  .search-input:hover{border-color:#3a465a}
+  .search-input:focus{outline:none;border-color:var(--accent2);background:var(--bg);box-shadow:0 0 0 3px rgba(90,200,250,.20)}
   .split-row{display:flex;align-items:center;gap:10px;margin:7px 0}
   .split-label{width:150px;font-size:13px;flex-shrink:0;text-align:right;color:var(--text)}
   .split-track{flex:1;background:var(--panel2);border-radius:6px;height:22px;position:relative;overflow:hidden}
@@ -297,17 +303,6 @@
 </div>
 <div id="toast"></div>
 <button id="toTop" title="Nach oben" aria-label="Nach oben" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
-
-<div id="lock" style="display:none">
-  <div class="lockbox">
-    <img class="mascot" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/shiny/400.png" alt="" onerror="this.onerror=null;this.src='https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/400.png'">
-    <h2>🔒 Bober Board</h2>
-    <p>Zugang nur für registrierte Mitglieder. Dein Passwort bekommst du per DM vom <b>Bober-Bot</b>.</p>
-    <input id="lockpass" type="password" autocomplete="current-password" placeholder="Passwort…" onkeydown="if(event.key==='Enter')submitLock()">
-    <button class="btn primary" onclick="submitLock()">Entsperren</button>
-    <div id="lockerr" class="lockerr"></div>
-  </div>
-</div>
 
 <script>
 /* ============================================================
@@ -1949,8 +1944,8 @@ function hordeSpec(hd){
 }
 function searchBarHTML(){
   return `<div class="bar" style="justify-content:flex-start;margin:0 0 12px">
-    <input id="hordeSearch" list="specList" class="name-input" style="width:200px" placeholder="🔎 Pokémon…" value="${esc(SEARCH)}" oninput="setHordeSearch(this.value)" onchange="commitSearch(this.value)">
-    <input id="locSearch" list="locList" class="name-input" style="width:200px" placeholder="🗺️ Ort / Region…" value="${esc(LSEARCH)}" oninput="setLocSearch(this.value)">
+    <input id="hordeSearch" list="specList" class="search-input" placeholder="🔎 Pokémon…" value="${esc(SEARCH)}" oninput="setHordeSearch(this.value)" onchange="commitSearch(this.value)" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <input id="locSearch" list="locList" class="search-input" placeholder="🗺️ Ort / Region…" value="${esc(LSEARCH)}" oninput="setLocSearch(this.value)" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
     <label class="lure-lbl" title="Lure-Encounter (5%) einblenden" style="align-self:center"><input type="checkbox" ${LURE_ON?"checked":""} onchange="setLure(this.checked)"> ${LURE_ICON} Lure anzeigen</label>
     ${(SEARCH||LSEARCH||MFILTER)?`<button class="btn" onclick="clearAllSearch()">✕ Filter löschen</button>`:""}
     <span class="ktag" id="hordeCount"></span>
