@@ -1,46 +1,46 @@
 {
-  "updated": "2026-08-11T01:05+00:00",
-  "active_type": "Fire",
+  "updated": "2026-08-11T07:41+00:00",
+  "active_type": "Psychic",
   "singles": [
     {
-      "name": "Arcanine",
-      "tier": "3"
+      "name": "Cleffa",
+      "tier": "2"
     },
     {
-      "name": "Finneon",
-      "tier": "3"
+      "name": "Gallade",
+      "tier": "2"
     },
     {
-      "name": "Ninetales",
-      "tier": "3"
-    },
-    {
-      "name": "Metapod",
+      "name": "Foongus",
       "tier": "5"
     },
     {
-      "name": "Solosis",
-      "tier": "6"
+      "name": "Herdier",
+      "tier": "5"
+    },
+    {
+      "name": "Tynamo",
+      "tier": "5"
     }
   ],
   "rare_singles": [
     {
-      "name": "Chimchar",
+      "name": "Metang",
       "tier": "0"
     },
     {
-      "name": "Infernape",
+      "name": "Metagross",
       "tier": "0"
     }
   ],
   "hordes": [
     {
-      "name": "Heatmor",
-      "tier": "4"
+      "name": "Xatu",
+      "tier": "5"
     },
     {
-      "name": "Psyduck",
-      "tier": "7"
+      "name": "Herdier",
+      "tier": "5"
     }
   ],
   "source": "PokeMMO Altering Cave Rotation Sheet (Team Méw)",
