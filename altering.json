@@ -1,46 +1,46 @@
 {
-  "updated": "2026-08-11T07:41+00:00",
-  "active_type": "Psychic",
+  "updated": "2026-08-11T12:22+00:00",
+  "active_type": "Poison",
   "singles": [
     {
-      "name": "Cleffa",
-      "tier": "2"
+      "name": "Murkrow",
+      "tier": "3"
     },
     {
-      "name": "Gallade",
-      "tier": "2"
+      "name": "Heatmor",
+      "tier": "4"
     },
     {
-      "name": "Foongus",
+      "name": "Dustox",
       "tier": "5"
     },
     {
-      "name": "Herdier",
-      "tier": "5"
+      "name": "Boldore",
+      "tier": "6"
     },
     {
-      "name": "Tynamo",
-      "tier": "5"
+      "name": "Gengar",
+      "tier": "7"
     }
   ],
   "rare_singles": [
     {
-      "name": "Metang",
+      "name": "Bulbasaur",
       "tier": "0"
     },
     {
-      "name": "Metagross",
-      "tier": "0"
+      "name": "Drapion",
+      "tier": "1"
     }
   ],
   "hordes": [
     {
-      "name": "Xatu",
+      "name": "Weepinbell",
       "tier": "5"
     },
     {
-      "name": "Herdier",
-      "tier": "5"
+      "name": "Bidoof",
+      "tier": "6"
     }
   ],
   "source": "PokeMMO Altering Cave Rotation Sheet (Team Méw)",
