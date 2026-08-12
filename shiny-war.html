@@ -2393,9 +2393,17 @@ function dumpHab(type){ const t=String(type||"").toLowerCase();
   if(t.includes("water")||t.includes("surf")||t.includes("angel")||t.includes("rod")||t.includes("fish")) return "wasser";
   if(t.includes("cave")||t.includes("rock")) return "hoehle";
   return ""; }
-/* Kanonische Oberfläche für die Gruppierung (Surfen ≠ Angeln, Gras ≠ Höhle …). */
+/* Rutentyp aus dem Location-Typ: super / good / old (leer = keine Angel).
+   Alle drei Ruten getrennt gruppieren. Reihenfolge wichtig, da "Profiangel" auch "angel" enthält. */
+function dumpRod(type){ const t=String(type||"").toLowerCase();
+  if(!/angel|rod|rute|fish/.test(t)) return "";
+  if(t.includes("super")) return "super";                     // Superangel / Super Rod
+  if(t.includes("profi")||t.includes("good")) return "good";  // Profiangel / Good Rod
+  return "old"; }                                              // Angel / Old Rod
+const ROD_LABEL={super:"🎣 Superangel (Super Rod)",good:"🎣 Profiangel (Good Rod)",old:"🎣 Angel (Old Rod)"};
+/* Kanonische Oberfläche für die Gruppierung (Surfen ≠ Angeln, Ruten getrennt, Gras ≠ Höhle …). */
 function dumpSurface(loc){ const t=String(loc.type||"").toLowerCase();
-  if(t.includes("angel")||t.includes("rod")||t.includes("fish")) return "angeln"; // alle Ruten zusammen
+  if(t.includes("angel")||t.includes("rod")||t.includes("fish")) return "angeln-"+dumpRod(loc.type); // Super/Good/Old getrennt halten
   if(t.includes("dark")&&t.includes("grass")) return "dunkelgras";
   if(t.includes("grass")) return "gras";
   if(t.includes("water")||t.includes("surf")) return "wasser";
@@ -2418,8 +2426,8 @@ function dumpMethod(loc){
   if(t.includes("angel")||t.includes("rod")||t.includes("fish")) return "angeln"; // Angel/Profiangel/Super Rod
   return "single"; // inkl. "Water" = Surfen (Single auf dem Wasser)
 }
-/* Zusatz-Notiz für Typen ohne eigenen Untergrund (Headbutt/Inside/Rock Smash). */
-function dumpTypeNote(type){ const t=String(type||""); return /headbutt|inside|rock/i.test(t)?t:""; }
+/* Zusatz-Notiz: Rutentyp (Super/Good/Old) bzw. Headbutt/Inside/Rock Smash. */
+function dumpTypeNote(type){ const rod=dumpRod(type); if(rod) return ROD_LABEL[rod]; const t=String(type||""); return /headbutt|inside|rock/i.test(t)?t:""; }
 function dumpIsLure(loc){ return /lure/i.test(String(loc.rarity_morning)+loc.rarity_day+loc.rarity_night) || Number(loc.rarity_flags)===256; }
 function dumpTod(loc){ const m=dumpPctNum(loc.rarity_morning)>0,d=dumpPctNum(loc.rarity_day)>0,n=dumpPctNum(loc.rarity_night)>0;
   if(m&&d&&n) return "immer"; if(n&&!d&&!m) return "nacht"; if(m&&!d&&!n) return "morgen"; if(d&&!n) return "tag"; return "immer"; }
