@@ -1,46 +1,46 @@
 {
-  "updated": "2026-08-12T12:52+00:00",
-  "active_type": "Fighting",
+  "updated": "2026-08-12T18:52+00:00",
+  "active_type": "Dark",
   "singles": [
     {
-      "name": "Ditto",
-      "tier": "6"
+      "name": "Clefairy",
+      "tier": "2"
     },
     {
-      "name": "Phanpy",
-      "tier": "6"
+      "name": "Houndoom",
+      "tier": "2"
     },
     {
-      "name": "Primeape",
-      "tier": "6"
+      "name": "Magmar",
+      "tier": "3"
     },
     {
-      "name": "Slugma",
-      "tier": "6"
+      "name": "Hydreigon",
+      "tier": "4"
     },
     {
-      "name": "Machamp",
-      "tier": "7"
+      "name": "Mankey",
+      "tier": "6"
     }
   ],
   "rare_singles": [
     {
-      "name": "Tyrogue",
-      "tier": "0"
+      "name": "Absol",
+      "tier": "1"
     },
     {
-      "name": "Blaziken",
-      "tier": "0"
+      "name": "Pawniard",
+      "tier": "2"
     }
   ],
   "hordes": [
     {
-      "name": "Gurdurr",
+      "name": "Whirlipede",
       "tier": "5"
     },
     {
-      "name": "Sandshrew",
-      "tier": "7"
+      "name": "Liepard",
+      "tier": "4"
     }
   ],
   "source": "PokeMMO Altering Cave Rotation Sheet (Team Méw)",
