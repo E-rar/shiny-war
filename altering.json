@@ -1,45 +1,45 @@
 {
-  "updated": "2026-08-11T18:22+00:00",
-  "active_type": "Psychic",
+  "updated": "2026-08-12T00:22+00:00",
+  "active_type": "Bug",
   "singles": [
     {
-      "name": "Chingling",
-      "tier": "3"
-    },
-    {
-      "name": "Pachirisu",
-      "tier": "4"
-    },
-    {
-      "name": "Venipede",
+      "name": "Beedrill",
       "tier": "5"
     },
     {
-      "name": "Solrock",
+      "name": "Escavalier",
+      "tier": "5"
+    },
+    {
+      "name": "Klang",
       "tier": "6"
     },
     {
-      "name": "Shiftry",
-      "tier": "7"
+      "name": "Luxio",
+      "tier": "6"
+    },
+    {
+      "name": "Makuhita",
+      "tier": "6"
     }
   ],
   "rare_singles": [
     {
-      "name": "Bayleef",
-      "tier": "0"
+      "name": "Combee",
+      "tier": "1"
     },
     {
-      "name": "Espeon",
-      "tier": "0"
+      "name": "Vespiquen",
+      "tier": "1"
     }
   ],
   "hordes": [
     {
-      "name": "Sigilyph",
+      "name": "Ledian",
       "tier": "3"
     },
     {
-      "name": "Smeargle",
+      "name": "Deerling",
       "tier": "7"
     }
   ],
