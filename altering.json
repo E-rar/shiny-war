@@ -1,45 +1,45 @@
 {
-  "updated": "2026-08-12T09:51+00:00",
-  "active_type": "Rock",
+  "updated": "2026-08-12T12:52+00:00",
+  "active_type": "Fighting",
   "singles": [
     {
-      "name": "Tyranitar",
-      "tier": "4"
-    },
-    {
-      "name": "Jigglypuff",
-      "tier": "5"
-    },
-    {
-      "name": "Gigalith",
+      "name": "Ditto",
       "tier": "6"
     },
     {
-      "name": "Frillish",
-      "tier": "7"
+      "name": "Phanpy",
+      "tier": "6"
     },
     {
-      "name": "Shellos",
+      "name": "Primeape",
+      "tier": "6"
+    },
+    {
+      "name": "Slugma",
+      "tier": "6"
+    },
+    {
+      "name": "Machamp",
       "tier": "7"
     }
   ],
   "rare_singles": [
     {
-      "name": "Sudowoodo",
-      "tier": "1"
+      "name": "Tyrogue",
+      "tier": "0"
     },
     {
-      "name": "Bonsly",
-      "tier": "1"
+      "name": "Blaziken",
+      "tier": "0"
     }
   ],
   "hordes": [
     {
-      "name": "Nosepass",
-      "tier": "3"
+      "name": "Gurdurr",
+      "tier": "5"
     },
     {
-      "name": "Seel",
+      "name": "Sandshrew",
       "tier": "7"
     }
   ],
