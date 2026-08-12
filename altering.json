@@ -1,5 +1,5 @@
 {
-  "updated": "2026-08-12T18:52+00:00",
+  "updated": "2026-08-12T20:52+00:00",
   "active_type": "Dark",
   "singles": [
     {
@@ -35,12 +35,12 @@
   ],
   "hordes": [
     {
-      "name": "Whirlipede",
-      "tier": "5"
-    },
-    {
       "name": "Liepard",
       "tier": "4"
+    },
+    {
+      "name": "Whirlipede",
+      "tier": "5"
     }
   ],
   "source": "PokeMMO Altering Cave Rotation Sheet (Team Méw)",
