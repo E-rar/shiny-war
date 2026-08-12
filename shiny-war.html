@@ -169,6 +169,7 @@
   .hcard{position:relative;border:1px solid var(--border);border-radius:11px;padding:14px;margin-bottom:12px;background:var(--panel2)}
   .hcard.ranked{padding-left:46px}
   .dangerbadge{background:rgba(248,81,73,.16);border:1px solid var(--bad);color:var(--bad);cursor:help}
+  .rodbadge{background:rgba(90,200,250,.16);border:1px solid var(--accent2);color:var(--accent2);cursor:help}
   .chartwrap{overflow-x:auto;margin:6px 0 2px}
   .stleg{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;margin-right:12px;cursor:pointer;user-select:none}
   .stleg:hover{opacity:.75}
@@ -1705,6 +1706,9 @@ const METHODS=[["horde5","🐾 5er-Horde",1200],["horde3","🐾 3er-Horde",720],
 function methodOf(hd){return hd.method||(hd.size===3?"horde3":"horde5");} // Fallback aus alter size
 function methodInfo(k){return METHODS.find(m=>m[0]===k)||METHODS[0];}
 function methodBadge(hd){const k=methodOf(hd);return `<span class="badge meth-${k}">${methodInfo(k)[1]}</span>`;}
+/* Rutentyp-Badge (nur bei Angel-Karten): Angel / Profiangel / Superangel */
+function rodBadge(hd){ if(!hd||!hd.rod) return ""; const lab=({old:"Angel",good:"Profiangel",super:"Superangel"})[hd.rod]; if(!lab) return "";
+  return `<span class="badge rodbadge" title="Diese Encounter bekommst du nur mit der ${esc(lab)}">🎣 ${esc(lab)}</span>`; }
 function methodHasLure(k){return k==="single"||k==="angeln";} // Lure nur bei Single & Angeln
 /* kleiner roter Trank als Lure-Icon */
 const LURE_ICON='<svg width="12" height="14" viewBox="0 0 20 24" style="vertical-align:-2px"><rect x="7" y="0" width="6" height="3" rx="1" fill="#b5651d"/><rect x="8.3" y="2.5" width="3.4" height="6" fill="#9fb8cc"/><path d="M8 8h4l3.4 6.6A5.9 5.9 0 1 1 4.6 14.6z" fill="#e23b3b" stroke="#9e1c1c" stroke-width="0.7"/><circle cx="8.3" cy="15" r="1.3" fill="#fff" opacity="0.45"/></svg>';
@@ -2158,7 +2162,7 @@ function renderHordeCard(hd,edit){
       combo=`<span class="bestcombo" title="Beste Bewertung dieser Horde">✨ Beste Kombi: ${sl} · ${tlab}</span>`; } }
   let h=`<div class="hcard ranked${isBest?' best':''}" data-spec="${esc(hordeSpec(hd))}" data-loc="${esc(hordeLocKey(hd))}" data-method="${methodOf(hd)}" style="${habStyle(hd)}">
     ${rankBadgeHTML(hd)}
-    <h3>📍 <span class="hlink" onclick="filterLoc('${jsAttr(stripParen(hd.loc))}')" title="Nur diesen Ort zeigen">${esc(trLoc(hd.loc)||"—")}</span> ${hd.region?`<span class="ktag">${esc(trRegion(hd.region))}</span>`:""} ${methodBadge(hd)} ${habBadge(hd)} ${levelBadge(hd)} ${dangerBadge(hd)} ${priorityBadge(hd)} ${combo}
+    <h3>📍 <span class="hlink" onclick="filterLoc('${jsAttr(stripParen(hd.loc))}')" title="Nur diesen Ort zeigen">${esc(trLoc(hd.loc)||"—")}</span> ${hd.region?`<span class="ktag">${esc(trRegion(hd.region))}</span>`:""} ${methodBadge(hd)} ${rodBadge(hd)} ${habBadge(hd)} ${levelBadge(hd)} ${dangerBadge(hd)} ${priorityBadge(hd)} ${combo}
       ${edit?`<span class="hactions">
         ${habSelect(hd.id,hd.hab)}
         <button class="btn" style="padding:4px 9px;font-size:12px" onclick="duplicateHorde('${hd.id}')" title="Kachel für weitere Ebene duplizieren">⧉ Splitten</button>
@@ -2361,7 +2365,7 @@ function applyHordes(arr){
     if(!id||seen.has(id)) id="h"+stamp+"_"+i.toString(36);
     seen.add(id);
     return {id,
-      loc:h.loc||"",region:h.region||"",level:h.level||"",note:h.note||"",method:h.method||(h.size===3?"horde3":"horde5"),hab:h.hab||"",
+      loc:h.loc||"",region:h.region||"",level:h.level||"",note:h.note||"",method:h.method||(h.size===3?"horde3":"horde5"),hab:h.hab||"",rod:h.rod||"",
       members:(h.members||[]).map(m=>{
         let s=m.s;
         if((!s||!Object.keys(s).length) && m.p!=null){const v=Number(m.p)||0; s={fruehling:v,sommer:v,herbst:v,winter:v};}
@@ -2400,7 +2404,7 @@ function dumpRod(type){ const t=String(type||"").toLowerCase();
   if(t.includes("super")) return "super";                     // Superangel / Super Rod
   if(t.includes("profi")||t.includes("good")) return "good";  // Profiangel / Good Rod
   return "old"; }                                              // Angel / Old Rod
-const ROD_LABEL={super:"🎣 Superangel (Super Rod)",good:"🎣 Profiangel (Good Rod)",old:"🎣 Angel (Old Rod)"};
+const ROD_LABEL={super:"Superangel",good:"Profiangel",old:"Angel"};
 /* Kanonische Oberfläche für die Gruppierung (Surfen ≠ Angeln, Ruten getrennt, Gras ≠ Höhle …). */
 function dumpSurface(loc){ const t=String(loc.type||"").toLowerCase();
   if(t.includes("angel")||t.includes("rod")||t.includes("fish")) return "angeln-"+dumpRod(loc.type); // Super/Good/Old getrennt halten
@@ -2426,8 +2430,9 @@ function dumpMethod(loc){
   if(t.includes("angel")||t.includes("rod")||t.includes("fish")) return "angeln"; // Angel/Profiangel/Super Rod
   return "single"; // inkl. "Water" = Surfen (Single auf dem Wasser)
 }
-/* Zusatz-Notiz: Rutentyp (Super/Good/Old) bzw. Headbutt/Inside/Rock Smash. */
-function dumpTypeNote(type){ const rod=dumpRod(type); if(rod) return ROD_LABEL[rod]; const t=String(type||""); return /headbutt|inside|rock/i.test(t)?t:""; }
+/* Zusatz-Notiz für Typen ohne eigenen Untergrund (Headbutt/Inside/Rock Smash).
+   Die Rute wird separat als Badge angezeigt (hd.rod), nicht in der Notiz. */
+function dumpTypeNote(type){ const t=String(type||""); return /headbutt|inside|rock/i.test(t)?t:""; }
 function dumpIsLure(loc){ return /lure/i.test(String(loc.rarity_morning)+loc.rarity_day+loc.rarity_night) || Number(loc.rarity_flags)===256; }
 function dumpTod(loc){ const m=dumpPctNum(loc.rarity_morning)>0,d=dumpPctNum(loc.rarity_day)>0,n=dumpPctNum(loc.rarity_night)>0;
   if(m&&d&&n) return "immer"; if(n&&!d&&!m) return "nacht"; if(m&&!d&&!n) return "morgen"; if(d&&!n) return "tag"; return "immer"; }
@@ -2455,7 +2460,7 @@ function convertMonsterDump(arr){
       const surface=dumpSurface(loc); // Surfen ≠ Angeln, Gras ≠ Höhle … getrennt halten
       const key=region+"|"+place+"|"+method+"|"+surface;
       let spot=spots.get(key);
-      if(!spot){ spot={loc:place,region,method,hab:(dumpHab(loc.type)||(isHorde?inferHab(region,place):"")),typeNote:dumpTypeNote(loc.type),members:new Map(),levels:new Set()}; spots.set(key,spot); }
+      if(!spot){ spot={loc:place,region,method,hab:(dumpHab(loc.type)||(isHorde?inferHab(region,place):"")),rod:dumpRod(loc.type),typeNote:dumpTypeNote(loc.type),members:new Map(),levels:new Set()}; spots.set(key,spot); }
       let mem=spot.members.get(name);
       if(!mem){ mem={name,s:{},tod:null,lure:false,lvMin:0,lvMax:0}; spot.members.set(name,mem); }
       const pct=isHorde?dumpHordePct(loc):dumpSinglePct(loc);
@@ -2474,7 +2479,7 @@ function convertMonsterDump(arr){
     const parts=[];
     if(spot.typeNote) parts.push(spot.typeNote);
     if(spot.levels.size){ let lo=Infinity,hi=-Infinity; spot.levels.forEach(r=>{const[a,b]=r.split("-").map(Number);lo=Math.min(lo,a);hi=Math.max(hi,b);}); parts.push(lo===hi?("Lv "+lo):("Lv "+lo+"-"+hi)); }
-    out.push({loc:spot.loc,region:spot.region,method:spot.method,hab:spot.hab,level:"",note:parts.join(" · "),members});
+    out.push({loc:spot.loc,region:spot.region,method:spot.method,hab:spot.hab,rod:spot.rod||"",level:"",note:parts.join(" · "),members});
   }
   return out;
 }
