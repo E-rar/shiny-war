@@ -1,45 +1,45 @@
 {
-  "updated": "2026-08-12T00:22+00:00",
-  "active_type": "Bug",
+  "updated": "2026-08-12T09:51+00:00",
+  "active_type": "Rock",
   "singles": [
     {
-      "name": "Beedrill",
+      "name": "Tyranitar",
+      "tier": "4"
+    },
+    {
+      "name": "Jigglypuff",
       "tier": "5"
     },
     {
-      "name": "Escavalier",
-      "tier": "5"
-    },
-    {
-      "name": "Klang",
+      "name": "Gigalith",
       "tier": "6"
     },
     {
-      "name": "Luxio",
-      "tier": "6"
+      "name": "Frillish",
+      "tier": "7"
     },
     {
-      "name": "Makuhita",
-      "tier": "6"
+      "name": "Shellos",
+      "tier": "7"
     }
   ],
   "rare_singles": [
     {
-      "name": "Combee",
+      "name": "Sudowoodo",
       "tier": "1"
     },
     {
-      "name": "Vespiquen",
+      "name": "Bonsly",
       "tier": "1"
     }
   ],
   "hordes": [
     {
-      "name": "Ledian",
+      "name": "Nosepass",
       "tier": "3"
     },
     {
-      "name": "Deerling",
+      "name": "Seel",
       "tier": "7"
     }
   ],
