@@ -1,46 +1,46 @@
 {
-  "updated": "2026-08-13T00:52+00:00",
-  "active_type": "Flying",
+  "updated": "2026-08-13T07:41+00:00",
+  "active_type": "Water",
   "singles": [
     {
-      "name": "Braviary",
-      "tier": "4"
+      "name": "Wailord",
+      "tier": "3"
     },
     {
-      "name": "Cubone",
+      "name": "Yanma",
+      "tier": "3"
+    },
+    {
+      "name": "Spearow",
       "tier": "6"
     },
     {
-      "name": "Ditto",
-      "tier": "6"
+      "name": "Slowbro",
+      "tier": "7"
     },
     {
-      "name": "Swoobat",
-      "tier": "6"
-    },
-    {
-      "name": "Frillish",
+      "name": "Wobbuffet",
       "tier": "7"
     }
   ],
   "rare_singles": [
     {
-      "name": "Charizard",
+      "name": "Marshtomp",
       "tier": "0"
     },
     {
-      "name": "Togetic",
+      "name": "Vaporeon",
       "tier": "0"
     }
   ],
   "hordes": [
     {
-      "name": "Tranquill",
-      "tier": "4"
+      "name": "Clamperl",
+      "tier": "6"
     },
     {
-      "name": "Rattata",
-      "tier": "7"
+      "name": "Bidoof",
+      "tier": "6"
     }
   ],
   "source": "PokeMMO Altering Cave Rotation Sheet (Team Méw)",
