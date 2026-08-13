@@ -1,46 +1,46 @@
 {
-  "updated": "2026-08-13T07:41+00:00",
-  "active_type": "Water",
+  "updated": "2026-08-13T12:41+00:00",
+  "active_type": "Dark",
   "singles": [
     {
-      "name": "Wailord",
-      "tier": "3"
+      "name": "Hydreigon",
+      "tier": "4"
     },
     {
-      "name": "Yanma",
-      "tier": "3"
+      "name": "Hippopotas",
+      "tier": "5"
     },
     {
-      "name": "Spearow",
+      "name": "elgyem",
       "tier": "6"
     },
     {
-      "name": "Slowbro",
+      "name": "Krookodile",
       "tier": "7"
     },
     {
-      "name": "Wobbuffet",
+      "name": "Slowpoke",
       "tier": "7"
     }
   ],
   "rare_singles": [
     {
-      "name": "Marshtomp",
-      "tier": "0"
+      "name": "Bisharp",
+      "tier": "2"
     },
     {
-      "name": "Vaporeon",
-      "tier": "0"
+      "name": "Pawniard",
+      "tier": "2"
     }
   ],
   "hordes": [
     {
-      "name": "Clamperl",
-      "tier": "6"
+      "name": "Bisharp",
+      "tier": "2"
     },
     {
-      "name": "Bidoof",
-      "tier": "6"
+      "name": "Shellos",
+      "tier": "7"
     }
   ],
   "source": "PokeMMO Altering Cave Rotation Sheet (Team Méw)",
