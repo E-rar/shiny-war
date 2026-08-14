@@ -1,45 +1,45 @@
 {
-  "updated": "2026-08-14T08:24+00:00",
-  "active_type": "Bug",
+  "updated": "2026-08-14T12:25+00:00",
+  "active_type": "Electric",
   "singles": [
     {
-      "name": "Venomoth",
-      "tier": "4"
-    },
-    {
-      "name": "Accelgor",
-      "tier": "5"
-    },
-    {
-      "name": "Cubone",
+      "name": "Ampharos",
       "tier": "6"
     },
     {
-      "name": "Glameow",
+      "name": "Lanturn",
+      "tier": "6"
+    },
+    {
+      "name": "Stunfisk",
+      "tier": "6"
+    },
+    {
+      "name": "Onix",
       "tier": "7"
     },
     {
-      "name": "Nuzleaf",
+      "name": "Shellos",
       "tier": "7"
     }
   ],
   "rare_singles": [
     {
-      "name": "Pineco",
-      "tier": "2"
+      "name": "Emolga",
+      "tier": "1"
     },
     {
-      "name": "Ninjask",
-      "tier": "2"
+      "name": "Ivysaur",
+      "tier": "0"
     }
   ],
   "hordes": [
     {
-      "name": "Yanma",
-      "tier": "3"
+      "name": "Pachirisu",
+      "tier": "4"
     },
     {
-      "name": "Munna",
+      "name": "Makuhita",
       "tier": "6"
     }
   ],
