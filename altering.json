@@ -1,46 +1,46 @@
 {
-  "updated": "2026-08-13T18:42+00:00",
-  "active_type": "Electric",
+  "updated": "2026-08-14T08:24+00:00",
+  "active_type": "Bug",
   "singles": [
     {
-      "name": "Eelektrik",
+      "name": "Venomoth",
+      "tier": "4"
+    },
+    {
+      "name": "Accelgor",
       "tier": "5"
     },
     {
-      "name": "Luxray",
+      "name": "Cubone",
       "tier": "6"
     },
     {
-      "name": "Phanpy",
-      "tier": "6"
+      "name": "Glameow",
+      "tier": "7"
     },
     {
-      "name": "Stantler",
-      "tier": "6"
-    },
-    {
-      "name": "Magnezone",
+      "name": "Nuzleaf",
       "tier": "7"
     }
   ],
   "rare_singles": [
     {
-      "name": "Shroomish",
-      "tier": "1"
+      "name": "Pineco",
+      "tier": "2"
     },
     {
-      "name": "Jolteon",
-      "tier": "0"
+      "name": "Ninjask",
+      "tier": "2"
     }
   ],
   "hordes": [
     {
-      "name": "Girafarig",
-      "tier": "7"
+      "name": "Yanma",
+      "tier": "3"
     },
     {
-      "name": "Minun",
-      "tier": "1"
+      "name": "Munna",
+      "tier": "6"
     }
   ],
   "source": "PokeMMO Altering Cave Rotation Sheet (Team Méw)",
