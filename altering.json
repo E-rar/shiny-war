@@ -1,32 +1,32 @@
 {
-  "updated": "2026-08-15T10:55+00:00",
-  "active_type": "Fighting",
+  "updated": "2026-08-15T12:08+00:00",
+  "active_type": "Fire",
   "singles": [
     {
-      "name": "Kirlia",
-      "tier": "2"
+      "name": "Magby",
+      "tier": "3"
     },
     {
-      "name": "Conkeldurr",
+      "name": "Purrloin",
+      "tier": "4"
+    },
+    {
+      "name": "Camerupt",
       "tier": "5"
     },
     {
-      "name": "Swablu",
-      "tier": "5"
-    },
-    {
-      "name": "Hariyama",
+      "name": "Klink",
       "tier": "6"
     },
     {
-      "name": "Goldeen",
-      "tier": "7"
+      "name": "Spearow",
+      "tier": "6"
     }
   ],
   "rare_singles": [
     {
-      "name": "Breloom",
-      "tier": "1"
+      "name": "Flareon",
+      "tier": "0"
     },
     {
       "name": "Monferno",
@@ -35,11 +35,11 @@
   ],
   "hordes": [
     {
-      "name": "Gurdurr",
-      "tier": "5"
+      "name": "Pansear",
+      "tier": "1"
     },
     {
-      "name": "Magnemite",
+      "name": "Girafarig",
       "tier": "7"
     }
   ],
