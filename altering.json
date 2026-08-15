@@ -1,7 +1,11 @@
 {
-  "updated": "2026-08-15T19:09+00:00",
+  "updated": "2026-08-15T22:09+00:00",
   "active_type": "Bug",
   "singles": [
+    {
+      "name": "zangoose",
+      "tier": "3"
+    },
     {
       "name": "Dustox",
       "tier": "5"
@@ -17,10 +21,6 @@
     {
       "name": "Seedot",
       "tier": "7"
-    },
-    {
-      "name": "Zangoose",
-      "tier": ""
     }
   ],
   "rare_singles": [
