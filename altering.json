@@ -1,5 +1,5 @@
 {
-  "updated": "2026-08-15T18:08+00:00",
+  "updated": "2026-08-15T19:09+00:00",
   "active_type": "Bug",
   "singles": [
     {
@@ -30,7 +30,7 @@
     },
     {
       "name": "Scyther",
-      "tier": ""
+      "tier": "1"
     }
   ],
   "hordes": [
