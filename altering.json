@@ -1,45 +1,45 @@
 {
-  "updated": "2026-08-16T00:09+00:00",
-  "active_type": "Rock",
+  "updated": "2026-08-16T12:39+00:00",
+  "active_type": "Ice",
   "singles": [
     {
-      "name": "Nidoran-M",
-      "tier": "5"
+      "name": "Sneasel",
+      "tier": "4"
     },
     {
-      "name": "Diglett",
+      "name": "Duosion",
       "tier": "6"
     },
     {
-      "name": "Magcargo",
+      "name": "Vanilluxe",
       "tier": "6"
     },
     {
-      "name": "Solosis",
-      "tier": "6"
+      "name": "Mamoswine",
+      "tier": "7"
     },
     {
-      "name": "Rhyperior",
+      "name": "Sandshrew",
       "tier": "7"
     }
   ],
   "rare_singles": [
     {
-      "name": "Bonsly",
-      "tier": "1"
+      "name": "Lapras",
+      "tier": "2"
     },
     {
-      "name": "Relicanth",
-      "tier": "2"
+      "name": "Grotle",
+      "tier": "0"
     }
   ],
   "hordes": [
     {
-      "name": "Boldore",
-      "tier": "6"
+      "name": "Cryogonal",
+      "tier": "3"
     },
     {
-      "name": "Patrat",
+      "name": "Woobat",
       "tier": "6"
     }
   ],
