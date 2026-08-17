@@ -1,46 +1,46 @@
 {
-  "updated": "2026-08-17T12:50+00:00",
-  "active_type": "Water",
+  "updated": "2026-08-17T18:50+00:00",
+  "active_type": "Ghost",
   "singles": [
     {
-      "name": "Ludicolo",
-      "tier": "4"
+      "name": "Drifblim",
+      "tier": "3"
     },
     {
-      "name": "Herdier",
-      "tier": "5"
-    },
-    {
-      "name": "Clamperl",
+      "name": "Sewaddle",
       "tier": "6"
     },
     {
-      "name": "Gigalith",
-      "tier": "6"
+      "name": "Gastly",
+      "tier": "7"
     },
     {
-      "name": "Dunsparce",
+      "name": "Jellicent",
+      "tier": "7"
+    },
+    {
+      "name": "Shellos",
       "tier": "7"
     }
   ],
   "rare_singles": [
     {
-      "name": "Alomomola",
+      "name": "Spiritomb",
       "tier": "1"
     },
     {
-      "name": "Dewott",
+      "name": "Chikorita",
       "tier": "0"
     }
   ],
   "hordes": [
     {
-      "name": "Panpour",
-      "tier": "1"
+      "name": "Misdreavus",
+      "tier": "3"
     },
     {
-      "name": "Deerling",
-      "tier": "7"
+      "name": "Roselia",
+      "tier": "6"
     }
   ],
   "source": "PokeMMO Altering Cave Rotation Sheet (Team Méw)",
