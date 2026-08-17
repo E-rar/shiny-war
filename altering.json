@@ -1,46 +1,46 @@
 {
-  "updated": "2026-08-17T00:40+00:00",
-  "active_type": "Electric",
+  "updated": "2026-08-17T08:50+00:00",
+  "active_type": "Steel",
   "singles": [
     {
-      "name": "Elekid",
+      "name": "Clefairy",
+      "tier": "2"
+    },
+    {
+      "name": "Surskit",
       "tier": "4"
     },
     {
-      "name": "Cascoon",
+      "name": "Escavalier",
       "tier": "5"
     },
     {
-      "name": "Tynamo",
+      "name": "Kakuna",
       "tier": "5"
     },
     {
-      "name": "Krokorok",
-      "tier": "7"
-    },
-    {
-      "name": "Magnezone",
-      "tier": "7"
+      "name": "Aggron",
+      "tier": "6"
     }
   ],
   "rare_singles": [
     {
-      "name": "Jolteon",
+      "name": "Beldum",
       "tier": "0"
     },
     {
-      "name": "Squirtle",
-      "tier": "0"
+      "name": "Forretress",
+      "tier": "2"
     }
   ],
   "hordes": [
     {
-      "name": "Pikachu",
-      "tier": "5"
+      "name": "Krabby",
+      "tier": "7"
     },
     {
-      "name": "Poliwhirl",
-      "tier": "7"
+      "name": "Forretress",
+      "tier": "2"
     }
   ],
   "source": "PokeMMO Altering Cave Rotation Sheet (Team Méw)",
