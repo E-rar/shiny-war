@@ -1,45 +1,45 @@
 {
-  "updated": "2026-08-17T18:50+00:00",
-  "active_type": "Ghost",
+  "updated": "2026-08-18T00:50+00:00",
+  "active_type": "Bug",
   "singles": [
     {
-      "name": "Drifblim",
+      "name": "Dratini",
       "tier": "3"
     },
     {
-      "name": "Sewaddle",
+      "name": "Masquerain",
+      "tier": "4"
+    },
+    {
+      "name": "Scraggy",
+      "tier": "4"
+    },
+    {
+      "name": "Leavanny",
       "tier": "6"
     },
     {
-      "name": "Gastly",
-      "tier": "7"
-    },
-    {
-      "name": "Jellicent",
-      "tier": "7"
-    },
-    {
-      "name": "Shellos",
+      "name": "Magnemite",
       "tier": "7"
     }
   ],
   "rare_singles": [
     {
-      "name": "Spiritomb",
+      "name": "Burmy",
       "tier": "1"
     },
     {
-      "name": "Chikorita",
-      "tier": "0"
+      "name": "Pinsir",
+      "tier": "1"
     }
   ],
   "hordes": [
     {
-      "name": "Misdreavus",
+      "name": "Volbeat",
       "tier": "3"
     },
     {
-      "name": "Roselia",
+      "name": "Ponyta",
       "tier": "6"
     }
   ],
