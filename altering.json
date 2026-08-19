@@ -1,45 +1,45 @@
 {
-  "updated": "2026-08-18T18:54+00:00",
+  "updated": "2026-08-19T00:54+00:00",
   "active_type": "Ice",
   "singles": [
     {
-      "name": "Ralts",
+      "name": "Clefairy",
       "tier": "2"
     },
     {
-      "name": "Durant",
+      "name": "Delibird",
+      "tier": "3"
+    },
+    {
+      "name": "Sunkern",
+      "tier": "3"
+    },
+    {
+      "name": "Abomasnow",
       "tier": "6"
     },
     {
-      "name": "Primeape",
-      "tier": "6"
-    },
-    {
-      "name": "Magnezone",
-      "tier": "7"
-    },
-    {
-      "name": "Mienfoo",
+      "name": "Walrein",
       "tier": "7"
     }
   ],
   "rare_singles": [
     {
-      "name": "Skarmory",
-      "tier": "1"
+      "name": "Cloyster",
+      "tier": "2"
     },
     {
-      "name": "Pawniard",
-      "tier": "2"
+      "name": "Shroomish",
+      "tier": "1"
     }
   ],
   "hordes": [
     {
-      "name": "Durant",
-      "tier": "6"
+      "name": "Cryogonal",
+      "tier": "3"
     },
     {
-      "name": "Druddigon",
+      "name": "Swadloon",
       "tier": "6"
     }
   ],
