@@ -1,45 +1,45 @@
 {
-  "updated": "2026-08-19T20:51+00:00",
-  "active_type": "Bug",
+  "updated": "2026-08-20T00:51+00:00",
+  "active_type": "Rock",
   "singles": [
     {
-      "name": "Houndour",
-      "tier": "2"
+      "name": "Zangoose",
+      "tier": "3"
     },
     {
-      "name": "Sneasel",
-      "tier": "4"
-    },
-    {
-      "name": "Beautifly",
+      "name": "Eelektrik",
       "tier": "5"
     },
     {
-      "name": "Leavanny",
+      "name": "Gigalith",
       "tier": "6"
     },
     {
-      "name": "Duskull",
-      "tier": "7"
+      "name": "Magcargo",
+      "tier": "6"
+    },
+    {
+      "name": "Farfetch'd",
+      "tier": ""
     }
   ],
   "rare_singles": [
     {
-      "name": "Skorupi",
+      "name": "Bonsly",
       "tier": "1"
     },
     {
-      "name": "Scizor",
-      "tier": "1"
+      "name": "Shuckle",
+      "tier": "2"
     }
   ],
   "hordes": [
     {
-      "name": "Butterfree",
-      "tier": "5"
+      "name": "Pupitar",
+      "tier": "4"
     },
     {
-      "name": "Krabby",
+      "name": "Smeargle",
       "tier": "7"
     }
   ],
