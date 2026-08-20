@@ -1,46 +1,46 @@
 {
-  "updated": "2026-08-20T00:51+00:00",
-  "active_type": "Rock",
+  "updated": "2026-08-20T08:00+00:00",
+  "active_type": "Poison",
   "singles": [
     {
-      "name": "Zangoose",
+      "name": "Magmar",
       "tier": "3"
     },
     {
-      "name": "Eelektrik",
+      "name": "Ariados",
+      "tier": "4"
+    },
+    {
+      "name": "Nidoking",
       "tier": "5"
     },
     {
-      "name": "Gigalith",
+      "name": "Bidoof",
       "tier": "6"
     },
     {
-      "name": "Magcargo",
+      "name": "Blitzle",
       "tier": "6"
-    },
-    {
-      "name": "Farfetch'd",
-      "tier": ""
     }
   ],
   "rare_singles": [
     {
-      "name": "Bonsly",
-      "tier": "1"
+      "name": "Venusaur",
+      "tier": "0"
     },
     {
-      "name": "Shuckle",
-      "tier": "2"
+      "name": "Bulbasaur",
+      "tier": "0"
     }
   ],
   "hordes": [
     {
-      "name": "Pupitar",
+      "name": "Venomoth",
       "tier": "4"
     },
     {
-      "name": "Smeargle",
-      "tier": "7"
+      "name": "Loudred",
+      "tier": "6"
     }
   ],
   "source": "PokeMMO Altering Cave Rotation Sheet (Team Méw)",
