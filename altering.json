@@ -1,45 +1,45 @@
 {
-  "updated": "2026-08-20T08:00+00:00",
-  "active_type": "Poison",
+  "updated": "2026-08-20T19:00+00:00",
+  "active_type": "Steel",
   "singles": [
     {
-      "name": "Magmar",
+      "name": "Probopass",
       "tier": "3"
     },
     {
-      "name": "Ariados",
-      "tier": "4"
-    },
-    {
-      "name": "Nidoking",
+      "name": "Escavalier",
       "tier": "5"
     },
     {
-      "name": "Bidoof",
-      "tier": "6"
+      "name": "Weepinbell",
+      "tier": "5"
     },
     {
-      "name": "Blitzle",
-      "tier": "6"
+      "name": "Whirlipede",
+      "tier": "5"
+    },
+    {
+      "name": "Shellos",
+      "tier": "7"
     }
   ],
   "rare_singles": [
     {
-      "name": "Venusaur",
+      "name": "Beldum",
       "tier": "0"
     },
     {
-      "name": "Bulbasaur",
+      "name": "Lucario",
       "tier": "0"
     }
   ],
   "hordes": [
     {
-      "name": "Venomoth",
-      "tier": "4"
+      "name": "Lairon",
+      "tier": "6"
     },
     {
-      "name": "Loudred",
+      "name": "Bidoof",
       "tier": "6"
     }
   ],
