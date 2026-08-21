@@ -1,35 +1,35 @@
 {
-  "updated": "2026-08-21T12:47+00:00",
-  "active_type": "Dark",
+  "updated": "2026-08-21T18:47+00:00",
+  "active_type": "Fire",
   "singles": [
     {
-      "name": "Houndoom",
-      "tier": "2"
-    },
-    {
-      "name": "Jynx",
+      "name": "Ninetales",
       "tier": "3"
     },
     {
-      "name": "Crawdaunt",
+      "name": "Tauros",
+      "tier": "3"
+    },
+    {
+      "name": "Hoothoot",
       "tier": "4"
     },
     {
-      "name": "Pidove",
-      "tier": "4"
-    },
-    {
-      "name": "Weedle",
+      "name": "Camerupt",
       "tier": "5"
+    },
+    {
+      "name": "Basculin",
+      "tier": "7"
     }
   ],
   "rare_singles": [
     {
-      "name": "Pawniard",
-      "tier": "2"
+      "name": "Simisear",
+      "tier": "1"
     },
     {
-      "name": "Umbreon",
+      "name": "Torchic",
       "tier": "0"
     }
   ],
@@ -39,7 +39,7 @@
       "tier": "2"
     },
     {
-      "name": "Phanpy",
+      "name": "Ditto",
       "tier": "6"
     }
   ],
