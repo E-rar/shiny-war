@@ -1,25 +1,25 @@
 {
-  "updated": "2026-08-20T19:00+00:00",
+  "updated": "2026-08-21T01:00+00:00",
   "active_type": "Steel",
   "singles": [
     {
-      "name": "Probopass",
-      "tier": "3"
+      "name": "Lombre",
+      "tier": "4"
     },
     {
-      "name": "Escavalier",
+      "name": "Ferroseed",
       "tier": "5"
     },
     {
-      "name": "Weepinbell",
+      "name": "Trubbish",
       "tier": "5"
     },
     {
-      "name": "Whirlipede",
-      "tier": "5"
+      "name": "Bronzong",
+      "tier": "7"
     },
     {
-      "name": "Shellos",
+      "name": "Cofagrigus",
       "tier": "7"
     }
   ],
@@ -29,13 +29,13 @@
       "tier": "0"
     },
     {
-      "name": "Lucario",
-      "tier": "0"
+      "name": "Skarmory",
+      "tier": "1"
     }
   ],
   "hordes": [
     {
-      "name": "Lairon",
+      "name": "Durant",
       "tier": "6"
     },
     {
