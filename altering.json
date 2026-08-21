@@ -1,45 +1,45 @@
 {
-  "updated": "2026-08-21T01:00+00:00",
-  "active_type": "Steel",
+  "updated": "2026-08-21T12:47+00:00",
+  "active_type": "Dark",
   "singles": [
     {
-      "name": "Lombre",
+      "name": "Houndoom",
+      "tier": "2"
+    },
+    {
+      "name": "Jynx",
+      "tier": "3"
+    },
+    {
+      "name": "Crawdaunt",
       "tier": "4"
     },
     {
-      "name": "Ferroseed",
+      "name": "Pidove",
+      "tier": "4"
+    },
+    {
+      "name": "Weedle",
       "tier": "5"
-    },
-    {
-      "name": "Trubbish",
-      "tier": "5"
-    },
-    {
-      "name": "Bronzong",
-      "tier": "7"
-    },
-    {
-      "name": "Cofagrigus",
-      "tier": "7"
     }
   ],
   "rare_singles": [
     {
-      "name": "Beldum",
-      "tier": "0"
+      "name": "Pawniard",
+      "tier": "2"
     },
     {
-      "name": "Skarmory",
-      "tier": "1"
+      "name": "Umbreon",
+      "tier": "0"
     }
   ],
   "hordes": [
     {
-      "name": "Durant",
-      "tier": "6"
+      "name": "Bisharp",
+      "tier": "2"
     },
     {
-      "name": "Bidoof",
+      "name": "Phanpy",
       "tier": "6"
     }
   ],
