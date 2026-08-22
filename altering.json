@@ -1,45 +1,45 @@
 {
-  "updated": "2026-08-21T21:47+00:00",
-  "active_type": "Fire",
+  "updated": "2026-08-22T00:47+00:00",
+  "active_type": "Dragon",
   "singles": [
     {
-      "name": "Ninetales",
+      "name": "Dragonite",
       "tier": "3"
     },
     {
-      "name": "Tauros",
-      "tier": "3"
-    },
-    {
-      "name": "Hoothoot",
+      "name": "Hydreigon",
       "tier": "4"
     },
     {
-      "name": "Camerupt",
-      "tier": "5"
+      "name": "Nidoran-f",
+      "tier": "6"
     },
     {
-      "name": "Basculin",
+      "name": "Geodude",
+      "tier": "7"
+    },
+    {
+      "name": "Golett",
       "tier": "7"
     }
   ],
   "rare_singles": [
     {
-      "name": "Simisear",
-      "tier": "1"
+      "name": "Bagon",
+      "tier": "2"
     },
     {
-      "name": "Torchic",
-      "tier": "0"
+      "name": "Salamence",
+      "tier": "2"
     }
   ],
   "hordes": [
     {
-      "name": "Houndoom",
-      "tier": "2"
+      "name": "Altaria",
+      "tier": "5"
     },
     {
-      "name": "Ditto",
+      "name": "Lickitung",
       "tier": "6"
     }
   ],
