@@ -1,25 +1,25 @@
 {
-  "updated": "2026-08-22T00:47+00:00",
+  "updated": "2026-08-22T15:24+00:00",
   "active_type": "Dragon",
   "singles": [
     {
-      "name": "Dragonite",
+      "name": "Dragonair",
       "tier": "3"
     },
     {
-      "name": "Hydreigon",
+      "name": "Flygon",
       "tier": "4"
     },
     {
-      "name": "Nidoran-f",
+      "name": "Wooper",
+      "tier": "4"
+    },
+    {
+      "name": "Beheeyem",
       "tier": "6"
     },
     {
-      "name": "Geodude",
-      "tier": "7"
-    },
-    {
-      "name": "Golett",
+      "name": "Lampent",
       "tier": "7"
     }
   ],
@@ -35,11 +35,11 @@
   ],
   "hordes": [
     {
-      "name": "Altaria",
-      "tier": "5"
+      "name": "Vibrava",
+      "tier": "4"
     },
     {
-      "name": "Lickitung",
+      "name": "Luxio",
       "tier": "6"
     }
   ],
