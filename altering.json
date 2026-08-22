@@ -1,46 +1,46 @@
 {
-  "updated": "2026-08-22T15:24+00:00",
-  "active_type": "Dragon",
+  "updated": "2026-08-22T20:24+00:00",
+  "active_type": "Bug",
   "singles": [
     {
-      "name": "Dragonair",
-      "tier": "3"
+      "name": "Beautifly",
+      "tier": "5"
     },
     {
-      "name": "Flygon",
-      "tier": "4"
+      "name": "Swablu",
+      "tier": "5"
     },
     {
-      "name": "Wooper",
-      "tier": "4"
-    },
-    {
-      "name": "Beheeyem",
+      "name": "Leavanny",
       "tier": "6"
     },
     {
-      "name": "Lampent",
+      "name": "Dusclops",
+      "tier": "7"
+    },
+    {
+      "name": "Magikarp",
       "tier": "7"
     }
   ],
   "rare_singles": [
     {
-      "name": "Bagon",
-      "tier": "2"
+      "name": "Larvesta",
+      "tier": "1"
     },
     {
-      "name": "Salamence",
-      "tier": "2"
+      "name": "Vespiquen",
+      "tier": "1"
     }
   ],
   "hordes": [
     {
-      "name": "Vibrava",
-      "tier": "4"
+      "name": "Ledian",
+      "tier": "3"
     },
     {
-      "name": "Luxio",
-      "tier": "6"
+      "name": "Voltorb",
+      "tier": "7"
     }
   ],
   "source": "PokeMMO Altering Cave Rotation Sheet (Team Méw)",
