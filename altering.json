@@ -1,45 +1,45 @@
 {
-  "updated": "2026-08-22T20:24+00:00",
-  "active_type": "Bug",
+  "updated": "2026-08-23T11:42+00:00",
+  "active_type": "Ice",
   "singles": [
     {
-      "name": "Beautifly",
+      "name": "Volbeat",
+      "tier": "3"
+    },
+    {
+      "name": "Kakuna",
       "tier": "5"
     },
     {
-      "name": "Swablu",
+      "name": "Snorunt",
       "tier": "5"
     },
     {
-      "name": "Leavanny",
+      "name": "Abomasnow",
       "tier": "6"
     },
     {
-      "name": "Dusclops",
-      "tier": "7"
-    },
-    {
-      "name": "Magikarp",
+      "name": "Mamoswine",
       "tier": "7"
     }
   ],
   "rare_singles": [
     {
-      "name": "Larvesta",
-      "tier": "1"
+      "name": "Lapras",
+      "tier": "2"
     },
     {
-      "name": "Vespiquen",
-      "tier": "1"
+      "name": "Mudkip",
+      "tier": "0"
     }
   ],
   "hordes": [
     {
-      "name": "Ledian",
-      "tier": "3"
+      "name": "Beartic",
+      "tier": "5"
     },
     {
-      "name": "Voltorb",
+      "name": "Golett",
       "tier": "7"
     }
   ],
