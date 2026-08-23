@@ -1,46 +1,46 @@
 {
-  "updated": "2026-08-23T11:42+00:00",
-  "active_type": "Ice",
+  "updated": "2026-08-23T22:35+00:00",
+  "active_type": "Normal",
   "singles": [
     {
-      "name": "Volbeat",
-      "tier": "3"
-    },
-    {
-      "name": "Kakuna",
+      "name": "Nidoking",
       "tier": "5"
     },
     {
-      "name": "Snorunt",
+      "name": "Nidoran-m",
       "tier": "5"
     },
     {
-      "name": "Abomasnow",
+      "name": "Bibarel",
       "tier": "6"
     },
     {
-      "name": "Mamoswine",
-      "tier": "7"
+      "name": "Durant",
+      "tier": "6"
+    },
+    {
+      "name": "Lairon",
+      "tier": "6"
     }
   ],
   "rare_singles": [
     {
-      "name": "Lapras",
-      "tier": "2"
+      "name": "Porygon2",
+      "tier": "0"
     },
     {
-      "name": "Mudkip",
-      "tier": "0"
+      "name": "Blissey",
+      "tier": "1"
     }
   ],
   "hordes": [
     {
-      "name": "Beartic",
-      "tier": "5"
+      "name": "Buneary",
+      "tier": "4"
     },
     {
-      "name": "Golett",
-      "tier": "7"
+      "name": "Spinda",
+      "tier": "4"
     }
   ],
   "source": "PokeMMO Altering Cave Rotation Sheet (Team Méw)",
