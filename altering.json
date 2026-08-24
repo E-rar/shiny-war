@@ -1,45 +1,45 @@
 {
-  "updated": "2026-08-24T13:51+00:00",
-  "active_type": "Dragon",
+  "updated": "2026-08-24T18:51+00:00",
+  "active_type": "Psychic",
   "singles": [
     {
-      "name": "Dragonite",
+      "name": "Kirlia",
+      "tier": "2"
+    },
+    {
+      "name": "Growlithe",
       "tier": "3"
     },
     {
-      "name": "Kingdra",
+      "name": "Scrafty",
+      "tier": "4"
+    },
+    {
+      "name": "Snubbull",
+      "tier": "4"
+    },
+    {
+      "name": "Conkeldurr",
       "tier": "5"
-    },
-    {
-      "name": "Natu",
-      "tier": "5"
-    },
-    {
-      "name": "Baltoy",
-      "tier": "7"
-    },
-    {
-      "name": "Poliwag",
-      "tier": "7"
     }
   ],
   "rare_singles": [
     {
-      "name": "Bagon",
+      "name": "Mime Jr",
       "tier": "2"
     },
     {
-      "name": "Salamence",
+      "name": "Mr. Mime",
       "tier": "2"
     }
   ],
   "hordes": [
     {
-      "name": "Dragonair",
-      "tier": "3"
+      "name": "Xatu",
+      "tier": "5"
     },
     {
-      "name": "Spearow",
+      "name": "Doduo",
       "tier": "6"
     }
   ],
