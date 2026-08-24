@@ -1,46 +1,46 @@
 {
-  "updated": "2026-08-24T12:51+00:00",
-  "active_type": "Fighting",
+  "updated": "2026-08-24T13:51+00:00",
+  "active_type": "Dragon",
   "singles": [
     {
-      "name": "Bellsprout",
+      "name": "Dragonite",
+      "tier": "3"
+    },
+    {
+      "name": "Kingdra",
       "tier": "5"
     },
     {
-      "name": "Dugtrio",
-      "tier": "6"
+      "name": "Natu",
+      "tier": "5"
     },
     {
-      "name": "Sewaddle",
-      "tier": "6"
-    },
-    {
-      "name": "Gastrodon",
+      "name": "Baltoy",
       "tier": "7"
     },
     {
-      "name": "Smeargle",
+      "name": "Poliwag",
       "tier": "7"
     }
   ],
   "rare_singles": [
     {
-      "name": "Swampert",
-      "tier": "0"
+      "name": "Bagon",
+      "tier": "2"
     },
     {
-      "name": "Nincada",
+      "name": "Salamence",
       "tier": "2"
     }
   ],
   "hordes": [
     {
-      "name": "Nidoking",
-      "tier": "5"
+      "name": "Dragonair",
+      "tier": "3"
     },
     {
-      "name": "Wobbuffet",
-      "tier": "7"
+      "name": "Spearow",
+      "tier": "6"
     }
   ],
   "source": "PokeMMO Altering Cave Rotation Sheet (Team Méw)",
