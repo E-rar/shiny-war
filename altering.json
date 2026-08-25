@@ -1,45 +1,45 @@
 {
-  "updated": "2026-08-25T12:45+00:00",
-  "active_type": "Ice",
+  "updated": "2026-08-25T18:45+00:00",
+  "active_type": "Water",
   "singles": [
     {
-      "name": "Weavile",
-      "tier": "4"
-    },
-    {
-      "name": "Beartic",
+      "name": "Lillipup",
       "tier": "5"
     },
     {
-      "name": "Mankey",
+      "name": "Gothitelle",
       "tier": "6"
     },
     {
-      "name": "Dusclops",
+      "name": "Stunfisk",
+      "tier": "6"
+    },
+    {
+      "name": "Kingler",
       "tier": "7"
     },
     {
-      "name": "Swinub",
+      "name": "Shellos",
       "tier": "7"
     }
   ],
   "rare_singles": [
     {
-      "name": "Cloyster",
-      "tier": "2"
+      "name": "Piplup",
+      "tier": "0"
     },
     {
-      "name": "Pansage",
-      "tier": "1"
+      "name": "Vaporeon",
+      "tier": "0"
     }
   ],
   "hordes": [
     {
-      "name": "Sneasel",
-      "tier": "4"
+      "name": "Panpour",
+      "tier": "1"
     },
     {
-      "name": "Swadloon",
+      "name": "Flaaffy",
       "tier": "6"
     }
   ],
