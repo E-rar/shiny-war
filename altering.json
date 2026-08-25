@@ -1,45 +1,45 @@
 {
-  "updated": "2026-08-24T18:51+00:00",
-  "active_type": "Psychic",
+  "updated": "2026-08-25T12:45+00:00",
+  "active_type": "Ice",
   "singles": [
     {
-      "name": "Kirlia",
-      "tier": "2"
-    },
-    {
-      "name": "Growlithe",
-      "tier": "3"
-    },
-    {
-      "name": "Scrafty",
+      "name": "Weavile",
       "tier": "4"
     },
     {
-      "name": "Snubbull",
-      "tier": "4"
-    },
-    {
-      "name": "Conkeldurr",
+      "name": "Beartic",
       "tier": "5"
+    },
+    {
+      "name": "Mankey",
+      "tier": "6"
+    },
+    {
+      "name": "Dusclops",
+      "tier": "7"
+    },
+    {
+      "name": "Swinub",
+      "tier": "7"
     }
   ],
   "rare_singles": [
     {
-      "name": "Mime Jr",
+      "name": "Cloyster",
       "tier": "2"
     },
     {
-      "name": "Mr. Mime",
-      "tier": "2"
+      "name": "Pansage",
+      "tier": "1"
     }
   ],
   "hordes": [
     {
-      "name": "Xatu",
-      "tier": "5"
+      "name": "Sneasel",
+      "tier": "4"
     },
     {
-      "name": "Doduo",
+      "name": "Swadloon",
       "tier": "6"
     }
   ],
