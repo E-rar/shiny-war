@@ -1,46 +1,46 @@
 {
-  "updated": "2026-08-26T14:56+00:00",
-  "active_type": "Grass",
+  "updated": "2026-08-26T18:56+00:00",
+  "active_type": "Steel",
   "singles": [
     {
-      "name": "Luvdisc",
-      "tier": "3"
-    },
-    {
-      "name": "Ferrothorn",
+      "name": "Jigglypuff",
       "tier": "5"
     },
     {
-      "name": "Rhyhorn",
+      "name": "Vullaby",
+      "tier": "6"
+    },
+    {
+      "name": "Bronzong",
       "tier": "7"
     },
     {
-      "name": "Shiftry",
+      "name": "Magnezone",
       "tier": "7"
     },
     {
-      "name": "Swinub",
+      "name": "Rhydon",
       "tier": "7"
     }
   ],
   "rare_singles": [
     {
-      "name": "Simisage",
-      "tier": "1"
+      "name": "Beldum",
+      "tier": "0"
     },
     {
-      "name": "Snivy",
+      "name": "Empoleon",
       "tier": "0"
     }
   ],
   "hordes": [
     {
-      "name": "Petilil",
+      "name": "Ferrothorn",
       "tier": "5"
     },
     {
-      "name": "Shuppet",
-      "tier": "7"
+      "name": "Spearow",
+      "tier": "6"
     }
   ],
   "source": "PokeMMO Altering Cave Rotation Sheet (Team Méw)",
