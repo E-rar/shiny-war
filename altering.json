@@ -1,45 +1,45 @@
 {
-  "updated": "2026-08-26T00:45+00:00",
-  "active_type": "Bug",
+  "updated": "2026-08-26T14:56+00:00",
+  "active_type": "Grass",
   "singles": [
     {
-      "name": "Accelgor",
+      "name": "Luvdisc",
+      "tier": "3"
+    },
+    {
+      "name": "Ferrothorn",
       "tier": "5"
     },
     {
-      "name": "Dustox",
-      "tier": "5"
+      "name": "Rhyhorn",
+      "tier": "7"
     },
     {
-      "name": "Ditto",
-      "tier": "6"
+      "name": "Shiftry",
+      "tier": "7"
     },
     {
-      "name": "Kadabra",
-      "tier": "6"
-    },
-    {
-      "name": "Nidorina",
-      "tier": "6"
+      "name": "Swinub",
+      "tier": "7"
     }
   ],
   "rare_singles": [
     {
-      "name": "Ninjask",
-      "tier": "2"
+      "name": "Simisage",
+      "tier": "1"
     },
     {
-      "name": "Combee",
-      "tier": "1"
+      "name": "Snivy",
+      "tier": "0"
     }
   ],
   "hordes": [
     {
-      "name": "Pinsir",
-      "tier": "1"
+      "name": "Petilil",
+      "tier": "5"
     },
     {
-      "name": "Golett",
+      "name": "Shuppet",
       "tier": "7"
     }
   ],
