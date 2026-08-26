@@ -1,46 +1,46 @@
 {
-  "updated": "2026-08-25T18:45+00:00",
-  "active_type": "Water",
+  "updated": "2026-08-26T00:45+00:00",
+  "active_type": "Bug",
   "singles": [
     {
-      "name": "Lillipup",
+      "name": "Accelgor",
       "tier": "5"
     },
     {
-      "name": "Gothitelle",
+      "name": "Dustox",
+      "tier": "5"
+    },
+    {
+      "name": "Ditto",
       "tier": "6"
     },
     {
-      "name": "Stunfisk",
+      "name": "Kadabra",
       "tier": "6"
     },
     {
-      "name": "Kingler",
-      "tier": "7"
-    },
-    {
-      "name": "Shellos",
-      "tier": "7"
+      "name": "Nidorina",
+      "tier": "6"
     }
   ],
   "rare_singles": [
     {
-      "name": "Piplup",
-      "tier": "0"
+      "name": "Ninjask",
+      "tier": "2"
     },
     {
-      "name": "Vaporeon",
-      "tier": "0"
+      "name": "Combee",
+      "tier": "1"
     }
   ],
   "hordes": [
     {
-      "name": "Panpour",
+      "name": "Pinsir",
       "tier": "1"
     },
     {
-      "name": "Flaaffy",
-      "tier": "6"
+      "name": "Golett",
+      "tier": "7"
     }
   ],
   "source": "PokeMMO Altering Cave Rotation Sheet (Team Méw)",
