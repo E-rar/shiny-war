@@ -1,46 +1,46 @@
 {
-  "updated": "2026-08-26T18:56+00:00",
-  "active_type": "Steel",
+  "updated": "2026-08-27T00:56+00:00",
+  "active_type": "Bug",
   "singles": [
     {
-      "name": "Jigglypuff",
+      "name": "Lotad",
+      "tier": "4"
+    },
+    {
+      "name": "Dustox",
       "tier": "5"
     },
     {
-      "name": "Vullaby",
+      "name": "Scolipede",
+      "tier": "5"
+    },
+    {
+      "name": "Nidoran-f",
       "tier": "6"
     },
     {
-      "name": "Bronzong",
-      "tier": "7"
-    },
-    {
-      "name": "Magnezone",
-      "tier": "7"
-    },
-    {
-      "name": "Rhydon",
-      "tier": "7"
+      "name": "Slugma",
+      "tier": "6"
     }
   ],
   "rare_singles": [
     {
-      "name": "Beldum",
-      "tier": "0"
+      "name": "Vespiquen",
+      "tier": "1"
     },
     {
-      "name": "Empoleon",
-      "tier": "0"
+      "name": "Scyther",
+      "tier": "1"
     }
   ],
   "hordes": [
     {
-      "name": "Ferrothorn",
-      "tier": "5"
+      "name": "Pinsir",
+      "tier": "1"
     },
     {
-      "name": "Spearow",
-      "tier": "6"
+      "name": "Magneton",
+      "tier": "7"
     }
   ],
   "source": "PokeMMO Altering Cave Rotation Sheet (Team Méw)",
