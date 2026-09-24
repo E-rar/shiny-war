@@ -296,7 +296,9 @@
     <div class="tab active" data-tab="loc" onclick="showTab('loc')">🗺️ Horden</div>
     <div class="tab" data-tab="tier" onclick="showTab('tier')">📋 Tierlist</div>
     <div class="tab" data-tab="stats" onclick="showTab('stats')">📈 Statistik</div>
-    <button class="btn" style="margin-left:auto;align-self:center" id="langBtn" onclick="toggleLang()" title="Pokémon-Namen zwischen Deutsch und Englisch umschalten">🌐 <span id="langLbl">DE</span></button>
+    <button class="btn" style="margin-left:auto;align-self:center;padding:7px 10px" onclick="document.getElementById('shinyboardCsv').click()" title="ShinyBoard CSV laden – persönliche Shinys beeinflussen Bewertung & Empfehlung">📄 CSV</button>
+    <input type="file" id="shinyboardCsv" accept=".csv,text/csv" style="display:none" onchange="importShinyBoardCsv(this)">
+    <button class="btn" style="align-self:center" id="langBtn" onclick="toggleLang()" title="Pokémon-Namen zwischen Deutsch und Englisch umschalten">🌐 <span id="langLbl">DE</span></button>
     <button class="btn" style="align-self:center" onclick="copyShareLink()" title="Aktuellen Link kopieren (Tab, Saison, Zeit, Filter)">🔗 Teilen</button>
   </div>
 
@@ -1771,9 +1773,98 @@ function userCaughtLines(id){ const set=new Set(), s=String(id);
   for(const c of allCaught()){ if(String(c.user_id)!==s) continue; const l=resolve(c.pokemon); if(l) set.add(norm(l.e)); }
   return set; }
 function setScorePerspective(id){ if(id){ SCORE_FOR=String(id); SCORE_SET=userCaughtLines(id); } else { SCORE_FOR=null; SCORE_SET=null; } }
+
+
+/* ===== ShinyBoard CSV – persönliche Owned-Linien =========================
+   Importiert den offiziellen ShinyBoard-CSV-Export. Nur Status "Owned" zählt.
+   Besitz irgendeiner Entwicklungsstufe markiert die komplette Linie als vorhanden.
+   Die vorhandene Horden-Bewertung/Empfehlung verwendet diese Linien dann wie
+   persönliche Duplikate: effektiver Wert = +1 statt voller Linien-Punkte. */
+let SHINYBOARD_LINES=loadShinyBoardLines();
+let SHINYBOARD_FILE=loadShinyBoardFileName();
+function loadShinyBoardLines(){
+  try{ return new Set(JSON.parse(localStorage.getItem("sw_shinyboard_lines")||"[]")); }
+  catch(e){ return new Set(); }
+}
+function loadShinyBoardFileName(){try{return localStorage.getItem("sw_shinyboard_file")||""}catch(e){return""}}
+function saveShinyBoardLines(){
+  try{
+    localStorage.setItem("sw_shinyboard_lines",JSON.stringify([...SHINYBOARD_LINES]));
+    if(SHINYBOARD_FILE) localStorage.setItem("sw_shinyboard_file",SHINYBOARD_FILE);
+    else localStorage.removeItem("sw_shinyboard_file");
+  }catch(e){}
+}
+function shinyBoardHasLine(name){
+  const l=resolve(name); return !!(l && SHINYBOARD_LINES.has(norm(l.e)));
+}
+function parseShinyBoardCsvRows(s){
+  const rows=[]; let row=[],field="",quoted=false;
+  s=String(s||"").replace(/^\uFEFF/,"");
+  for(let i=0;i<s.length;i++){
+    const ch=s[i];
+    if(quoted){
+      if(ch==='"' && s[i+1]==='"'){field+='"';i++;}
+      else if(ch==='"') quoted=false;
+      else field+=ch;
+    }else{
+      if(ch==='"') quoted=true;
+      else if(ch===','){row.push(field);field="";}
+      else if(ch==='\n'){row.push(field);rows.push(row);row=[];field="";}
+      else if(ch!=='\r') field+=ch;
+    }
+  }
+  row.push(field); if(row.length>1||row[0]!=="") rows.push(row);
+  return rows;
+}
+function importShinyBoardCsv(input){
+  const f=input&&input.files&&input.files[0]; if(!f)return;
+  input.value="";
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const rows=parseShinyBoardCsvRows(r.result);
+      if(!rows.length) throw new Error("CSV ist leer");
+      const head=rows[0].map(x=>norm(x));
+      const pi=head.findIndex(x=>x==="pokemon");
+      const si=head.findIndex(x=>x==="status");
+      if(pi<0||si<0) throw new Error('Spalten "Pokémon" und "Status" fehlen');
+      const set=new Set(); let owned=0,sold=0,unknown=0;
+      for(const row of rows.slice(1)){
+        const status=norm(row[si]||"");
+        const mon=String(row[pi]||"").trim();
+        if(!mon)continue;
+        if(status==="sold"){sold++;continue;}
+        if(status!=="owned")continue;
+        owned++;
+        const l=resolve(mon);
+        if(l)set.add(norm(l.e)); else unknown++;
+      }
+      SHINYBOARD_LINES=set; SHINYBOARD_FILE=f.name; saveShinyBoardLines();
+      if(typeof bumpRatingCache==="function") bumpRatingCache();
+      render();
+      toast("📄 ShinyBoard: "+set.size+" Owned-Linien geladen"+(sold?" · "+sold+" Sold ignoriert":"")+(unknown?" · "+unknown+" unbekannt":""));
+    }catch(e){ toast("✗ ShinyBoard CSV: "+e.message,true); }
+  };
+  r.onerror=()=>toast("✗ ShinyBoard CSV konnte nicht gelesen werden",true);
+  r.readAsText(f);
+}
+function clearShinyBoardCsv(){
+  SHINYBOARD_LINES=new Set(); SHINYBOARD_FILE=""; saveShinyBoardLines();
+  if(typeof bumpRatingCache==="function") bumpRatingCache();
+  render(); toast("📄 ShinyBoard-Daten entfernt");
+}
+function shinyBoardImportHTML(){
+  const active=SHINYBOARD_LINES.size>0;
+  return `<div class="bar" style="justify-content:flex-start;margin:0 0 12px">
+    <button class="btn${active?' primary':''}" onclick="document.getElementById('shinyboardCsv').click()" title="ShinyBoard CSV exportieren und hier importieren">📄 ShinyBoard CSV ${active?'ersetzen':'laden'}</button>
+    <input type="file" id="shinyboardCsvInline" accept=".csv,text/csv" style="display:none" onchange="importShinyBoardCsv(this)">
+    ${active?`<span class="ktag" title="${esc(SHINYBOARD_FILE)}">✓ ${SHINYBOARD_LINES.size} Owned-Entwicklungslinien aktiv</span><button class="btn" onclick="clearShinyBoardCsv()">✕ CSV zurücksetzen</button>`:`<span class="ktag">Persönliche Shinys importieren → Bewertung & Empfehlung werden angepasst</span>`}
+  </div>`;
+}
 /* Effektiver Punktwert einer Species. Team: Tier + 8 (falls Team-Linie offen).
    Spieler-Perspektive (SCORE_SET gesetzt): eigene Duplikat-Linie -> nur 1 Punkt. */
 function effPoints(name){ const l=resolve(name); if(!l) return 0; const k=norm(l.e);
+  if(TAB==="loc" && SHINYBOARD_LINES.has(k)) return 1;
   if(SCORE_SET && SCORE_SET.has(k)) return 1;
   return l.p + (CAUGHT_LINES.has(k)?0:8); }
 /* Sichtbare Members für aktuellen Filter (Saison/Tageszeit/Lure), Prozente auf Summe=100 normalisiert.
@@ -2174,9 +2265,11 @@ function renderHordeCard(hd,edit){
     const line=resolve(m.name);
     const col=line?TIER_COLORS[line.t]:"#5c6b7a";
     const uk=line?norm(line.e):"";
+    const csvHas=!!(TAB==="loc"&&uk&&SHINYBOARD_LINES.has(uk));
     const userHas=!!(SCORE_SET&&uk&&SCORE_SET.has(uk));
+    const personalHas=csvHas||userHas;
     const open=line&&!CAUGHT_LINES.has(uk);
-    const mark=!line?'':userHas?'<span class="ktag">✓ hast du · +1</span>':(open?'<span style="color:var(--good)">🆕 +8</span>':'<span class="ktag">✓ Team</span>');
+    const mark=!line?'':personalHas?(csvHas?'<span class="ktag">✓ ShinyBoard · +1</span>':'<span class="ktag">✓ hast du · +1</span>'):(open?'<span style="color:var(--good)">🆕 +8</span>':'<span class="ktag">✓ Team</span>');
     const val=line?effPoints(m.name):0;
     const tmark=m.tod&&m.tod!=="immer"?`<span class="ktag">${todIcon(m.tod)}</span>`:"";
     const luremark=(m.lure&&methodHasLure(methodOf(hd)))?`<span title="Nur mit Lure (Köder)" style="margin-left:2px">${LURE_ICON}</span>`:"";
@@ -2187,7 +2280,7 @@ function renderHordeCard(hd,edit){
     </div>`;
   }
   const rate=encRate(hd);
-  const newLines=(hd.members||[]).filter(m=>{const l=resolve(m.name);if(!(activePct(m)>0&&l))return false;const k=norm(l.e);if(SCORE_SET&&SCORE_SET.has(k))return false;return !CAUGHT_LINES.has(k);}).length;
+  const newLines=(hd.members||[]).filter(m=>{const l=resolve(m.name);if(!(activePct(m)>0&&l))return false;const k=norm(l.e);if(TAB==="loc"&&SHINYBOARD_LINES.has(k))return false;if(SCORE_SET&&SCORE_SET.has(k))return false;return !CAUGHT_LINES.has(k);}).length;
   h+=`<p class="evexp">Ø Wert (${seasonLabel()}): <b>${ev.toFixed(1)} Pkt</b> pro Begegnung <span class="ktag">(Tier +8 für ${newLines} offene Linie${newLines===1?"":"n"})</span><br>
     Bewertung: <b style="color:var(--good)">${fmtNum(rating(hd))}</b> <span class="ktag">= max. ${fmtNum(rate)} Enc./h × Ø-Wert</span></p></div>`;
   return h;
