@@ -1183,8 +1183,17 @@ const WAR_START_UTC = Date.UTC(2026,7,1,0,0,0);    // 01.08.2026 -> Woche 1 = So
 const SEASON_ORDER  = ["sommer","herbst","winter","fruehling"];
 function ingameMinutes(t){ let m=((t-IG_ANCHOR_UTC)/60000)*4; return ((m%1440)+1440)%1440; }
 function todAtHour(h){ if(h>=21||h<4) return "nacht"; if(h<11) return "morgen"; return "tag"; }
-function seasonAtTime(t){ if(t<WAR_START_UTC) return "sommer"; const w=Math.floor((t-WAR_START_UTC)/(7*864e5)); return SEASON_ORDER[((w%4)+4)%4]; }
-function nowState(t){ t=t||Date.now(); const m=ingameMinutes(t), h=Math.floor(m/60);
+function seasonAtTime(t){
+  const month = new Date(t).getMonth(); // 0=Jan ... 8=Sep
+
+  const monthly = [
+    "fruehling",
+    "sommer",
+    "herbst",
+    "winter"
+  ];
+  return monthly[((month - 8) % 4 + 4) % 4];
+}function nowState(t){ t=t||Date.now(); const m=ingameMinutes(t), h=Math.floor(m/60);
   const week = t<WAR_START_UTC ? 0 : Math.floor((t-WAR_START_UTC)/(7*864e5))+1;
   return {season:seasonAtTime(t), tod:todAtHour(h), h, min:Math.floor(m%60), week}; }
 function pad2(n){return String(n).padStart(2,"0");}
